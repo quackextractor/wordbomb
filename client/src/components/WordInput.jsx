@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import '../assets/css/WordInput.css';
 
 /**
@@ -22,6 +23,19 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
     setError('');
   }, [wordpiece]);
 
+  // Validate word against dictionary API
+  const validateWord = async (word) => {
+    try {
+      const response = await axios.get(
+          `https://api.datamuse.com/words?sp=${word}&md=d&max=1`
+      );
+      return response.data.length > 0;
+    } catch (err) {
+      console.error('Validation error:', err);
+      return false;
+    }
+  };
+
   // Handle input change
   const handleChange = (e) => {
     setInputValue(e.target.value);
@@ -29,58 +43,71 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const word = inputValue.trim().toLowerCase();
-    
+
     // Validate input
     if (!word) {
       setError('Please enter a word');
       return;
     }
-    
+
     // Check if word contains the wordpiece
     if (!word.includes(wordpiece.toLowerCase())) {
       setError(`Word must contain "${wordpiece}"`);
       return;
     }
-    
+
+    // Check if word is valid dictionary word
+    const isValid = await validateWord(word);
+    if (!isValid) {
+      setError('Invalid word - not in dictionary');
+      return;
+    }
+
     // Submit word
     onSubmit(word);
-    
+
     // Clear input
     setInputValue('');
   };
 
   return (
-    <div className="word-input-container">
-      <form onSubmit={handleSubmit}>
-        <div className="input-wrapper">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={handleChange}
-            placeholder={disabled ? "Wait for your turn..." : "Type a word containing the wordpiece"}
-            disabled={disabled}
-            autoComplete="off"
-            className={error ? 'error' : ''}
-          />
-          <button 
-            type="submit" 
-            disabled={disabled || !inputValue.trim()}
-          >
-            Submit
-          </button>
+      <div className="word-input-container">
+        <form onSubmit={handleSubmit}>
+          <div className="input-wrapper">
+            <input
+                ref={inputRef}
+                type="text"
+                value={inputValue}
+                onChange={handleChange}
+                placeholder={
+                  disabled
+                      ? 'Wait for your turn...'
+                      : 'Type a word containing the wordpiece'
+                }
+                disabled={disabled}
+                autoComplete="off"
+                className={error ? 'error' : ''}
+            />
+            <button
+                type="submit"
+                disabled={disabled || !inputValue.trim()}
+            >
+              Submit
+            </button>
+          </div>
+          {error && <div className="error-message">{error}</div>}
+        </form>
+
+        <div className="input-help">
+          <p>
+            Type any word containing <strong>"{wordpiece}"</strong>
+          </p>
         </div>
-        {error && <div className="error-message">{error}</div>}
-      </form>
-      
-      <div className="input-help">
-        <p>Type any word containing <strong>"{wordpiece}"</strong></p>
       </div>
-    </div>
   );
 }
 
