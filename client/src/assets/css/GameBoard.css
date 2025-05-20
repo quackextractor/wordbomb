@@ -1,0 +1,370 @@
+.game-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f8f9fa;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.timer-container {
+  position: relative;
+}
+
+.timer {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+  position: relative;
+}
+
+.timer::before {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  height: 4px;
+  width: var(--progress, 100%);
+  background: linear-gradient(to right, #6e8efb, #a777e3);
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.player-info span {
+  font-weight: 600;
+  color: #333;
+}
+
+.lives {
+  display: flex;
+  gap: 5px;
+}
+
+.life-icon {
+  font-size: 1.2rem;
+}
+
+.game-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+.wordpiece-container {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.wordpiece-container h2 {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.wordpiece {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #6e8efb;
+  padding: 10px 30px;
+  background-color: #f0f4ff;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.definition-btn {
+  margin-top: 20px;
+  background-color: #f0f4ff;
+  color: #6e8efb;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.definition-btn:hover {
+  background-color: #e0e8ff;
+}
+
+.players-container {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.players-container h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  transition: background-color 0.3s;
+}
+
+.player-card.current-turn {
+  background-color: #f0f4ff;
+  border: 2px solid #6e8efb;
+}
+
+.player-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.player-avatar-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+}
+
+.player-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.player-score {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.player-lives {
+  display: flex;
+  gap: 3px;
+}
+
+.life-icon-small {
+  font-size: 0.8rem;
+}
+
+.power-ups-container {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+.power-ups-container h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.power-ups-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.power-up-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #f0f4ff;
+  color: #6e8efb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.power-up-btn:hover:not(:disabled) {
+  background-color: #e0e8ff;
+}
+
+.power-up-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.power-up-count {
+  font-weight: bold;
+  color: #a777e3;
+}
+
+.game-loading, .game-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+}
+
+.game-loading h2, .game-waiting h2 {
+  font-size: 2rem;
+  color: white;
+  margin-bottom: 20px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.game-waiting p {
+  color: white;
+  margin-bottom: 15px;
+}
+
+.room-id {
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.players-list {
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+  margin: 20px 0;
+}
+
+.players-list h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.player-item:last-child {
+  border-bottom: none;
+}
+
+.host-badge {
+  background-color: #6e8efb;
+  color: white;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.start-game-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  transition: background-color 0.3s;
+}
+
+.start-game-btn:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.start-game-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.leave-game-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.leave-game-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.error-message {
+  color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .game-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+  
+  .room-info {
+    align-items: center;
+  }
+  
+  .player-info {
+    align-items: center;
+  }
+  
+  .wordpiece {
+    font-size: 2.5rem;
+  }
+  
+  .players-grid {
+    grid-template-columns: 1fr;
+  }
+}
