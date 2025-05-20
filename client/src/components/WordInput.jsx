@@ -23,18 +23,57 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
     setError('');
   }, [wordpiece]);
 
+  
+  
+  
+  
   // Validate word against dictionary API
   const validateWord = async (word) => {
+    const term = word.trim().toLowerCase();
+
+    // Multiple blacklisted terms
+    const blacklistedTerms = ["initialism"]; // Add more as needed
+
     try {
-      const response = await axios.get(
-          `https://api.datamuse.com/words?sp=${word}&md=d&max=1`
-      );
-      return response.data.length > 0;
+      const response = await axios.get('https://api.datamuse.com/words', {
+        params: {
+          sp: term,
+          md: 'd',
+          max: 5,
+        },
+      });
+
+      const firstEntry = response.data[0];
+
+      if (
+          firstEntry &&
+          firstEntry.word.toLowerCase() === term &&
+          Array.isArray(firstEntry.defs) &&
+          firstEntry.defs.length > 0
+      ) {
+        const firstDef = firstEntry.defs[0].toLowerCase();
+
+        const isBlacklisted = blacklistedTerms.some(blacklisted =>
+            firstDef.includes(blacklisted.toLowerCase())
+        );
+
+        if (!isBlacklisted) {
+          console.log('Word:', word, 'First definition:', firstDef);
+          return true;
+        }
+      }
+
+      return false;
     } catch (err) {
       console.error('Validation error:', err);
       return false;
     }
   };
+
+
+
+
+
 
   // Handle input change
   const handleChange = (e) => {
