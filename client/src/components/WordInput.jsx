@@ -32,7 +32,7 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
     const term = word.trim().toLowerCase();
 
     // Multiple blacklisted terms
-    const blacklistedTerms = ["initialism"]; // Add more as needed
+    const blacklistedTerms = ["initialism", "slang","dialects"]; // Add more as needed
 
     try {
       const response = await axios.get('https://api.datamuse.com/words', {
@@ -58,7 +58,7 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
         );
 
         if (!isBlacklisted) {
-          console.log('Word:', word, 'First definition:', firstDef);
+          console.log('Word:', word+",", 'First definition:', firstDef);
           return true;
         }
       }
