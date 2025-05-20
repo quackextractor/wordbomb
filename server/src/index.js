@@ -11,6 +11,7 @@ import validateRouter from './routes/validate.js';
 
 import setupLobbyHandlers from './sockets/lobby.js';
 import setupGameHandlers from './sockets/game.js';
+import { createGame } from './game.js';
 
 dotenv.config();
 
@@ -50,9 +51,69 @@ const games = new Map();
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    setupLobbyHandlers(io, socket, rooms, games);
+    // Lobby events
+    socket.on('room:create', ({ roomId, player }) => {
+        if (rooms.has(roomId)) {
+            socket.emit('error', 'Room already exists');
+            return;
+        }
+        const room = {
+            id: roomId,
+            hostId: player.id,
+            players: [player],
+            status: 'waiting',
+            createdAt: new Date()
+        };
+        rooms.set(roomId, room);
+        socket.join(roomId);
+        socket.emit('room:created', room);
+        io.to(roomId).emit('room:update', room);
+    });
 
-    setupGameHandlers(io, socket, rooms, games);
+    socket.on('room:join', ({ roomId, player }) => {
+        if (!rooms.has(roomId)) {
+            socket.emit('error', 'Room does not exist');
+            return;
+        }
+        const room = rooms.get(roomId);
+        if (room.players.find(p => p.id === player.id)) {
+            socket.emit('error', 'Player already in room');
+            return;
+        }
+        room.players.push(player);
+        socket.join(roomId);
+        io.to(roomId).emit('room:update', room);
+    });
+
+    socket.on('room:leave', ({ roomId, playerId }) => {
+        if (!rooms.has(roomId)) return;
+        const room = rooms.get(roomId);
+        room.players = room.players.filter(p => p.id !== playerId);
+        if (room.players.length === 0) {
+            rooms.delete(roomId);
+            games.delete(roomId);
+        } else if (room.hostId === playerId) {
+            room.hostId = room.players[0].id;
+        }
+        io.to(roomId).emit('room:update', room);
+    });
+
+    // Game events
+    socket.on('game:start', ({ roomId, mode }) => {
+        if (!rooms.has(roomId)) {
+            socket.emit('error', 'Room not found');
+            return;
+        }
+        const room = rooms.get(roomId);
+        if (room.hostId !== socket.id) {
+            socket.emit('error', 'Only the host can start the game');
+            return;
+        }
+        const game = createGame(roomId, mode, room.players);
+        game.status = 'playing';
+        games.set(roomId, game);
+        io.to(roomId).emit('game:start', game.toState());
+    });
 
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);

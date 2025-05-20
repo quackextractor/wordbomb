@@ -1,3 +1,4 @@
+
 import React, {useEffect, useRef, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
@@ -6,13 +7,6 @@ import useGameSocket from '../hooks/useGameSocket';
 import {getDefinition} from '../utils/definitionUtils';
 import '../assets/css/GameBoard.css';
 
-function handleRequestDefinition() {
-    console.log(getDefinition());
-}
-
-/**
- * Main game board component that handles game state and rendering
- */
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -492,6 +486,16 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     const playerPowerUps = activeGameState?.powerUps[player.id] || {};
 
+    function handleRequestDefinition() {
+        if (!lastSubmittedWord) return;
+        requestDefinition(lastSubmittedWord);
+        setShowDefinition(true);
+    }
+
+    function handleCloseDefinition() {
+        setShowDefinition(false);
+    }
+
     return (
         <div className="game-board">
             <div className="game-header">
@@ -533,7 +537,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
                 {lastSubmittedWord && (
                     <button
                         className="definition-btn"
-                        onClick={() => handleRequestDefinition(lastSubmittedWord)}
+                        onClick={() => handleRequestDefinition()}
                     >
                         Show definition for "{lastSubmittedWord}"
                     </button>
@@ -596,7 +600,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
                 </div>
             )}
 
-            {showDefinition && definition && (
+            {showDefinition && (
                 <InfoModal
                     word={lastSubmittedWord}
                     definition={definition}
