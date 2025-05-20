@@ -3,8 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import WordInput from './WordInput';
 import InfoModal from './InfoModal';
 import useGameSocket from '../hooks/useGameSocket';
-import { setDefinition } from '../utils/definitionUtils'; // Import setDefinition
+import {getDefinition, getLastDefinition, setDefinition} from '../utils/definitionUtils'; // Import setDefinition
 import '../assets/css/GameBoard.css';
+
+function handleRequestDefinition() {
+  console.log(getDefinition());
+}
 
 /**
  * Main game board component that handles game state and rendering
@@ -286,49 +290,49 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
   // Handle local word submission
   const handleLocalSubmitWord = (word) => {
     if (!localGameState) return;
-    
-    const { currentWordpiece, currentTurn, usedWords } = localGameState;
-    
+
+    const {currentWordpiece, currentTurn, usedWords} = localGameState;
+
     // Basic validation
     if (!word.toLowerCase().includes(currentWordpiece.toLowerCase())) {
       // Invalid word - doesn't contain wordpiece
       return;
     }
-    
+
     if (usedWords.has(word.toLowerCase())) {
       // Word already used
       return;
     }
-    
+
     // In a real implementation, we would validate against a dictionary
     // For now, we'll assume all words are valid if they contain the wordpiece
-    
+
     // Update game state
     setLocalGameState(prev => {
       // Add word to used words
       const newUsedWords = new Set(prev.usedWords);
       newUsedWords.add(word.toLowerCase());
-      
+
       // Calculate score based on word length
       const score = Math.max(1, word.length - currentWordpiece.length + 1);
-      
+
       // Update player score
-      const newScores = { ...prev.scores };
+      const newScores = {...prev.scores};
       newScores[currentTurn] = newScores[currentTurn] + score;
-      
+
       // Check if word is long enough for a power-up (25% chance for words longer than 7 chars)
-      const newPowerUps = { ...prev.powerUps };
+      const newPowerUps = {...prev.powerUps};
       if (word.length > 7 && Math.random() < 0.25) {
         // Award a random power-up
         const powerUpTypes = ['reverse_turn', 'trap', 'extra_wordpiece'];
         const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-        
+
         newPowerUps[currentTurn] = {
           ...newPowerUps[currentTurn],
           [randomPowerUp]: (newPowerUps[currentTurn][randomPowerUp] || 0) + 1
         };
       }
-      
+
       // For local multiplayer, move to next player's turn
       let nextPlayerId = currentTurn;
       if (gameSettings.mode === 'local') {
@@ -336,13 +340,13 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         const nextIndex = (currentIndex + 1) % prev.turnOrder.length;
         nextPlayerId = prev.turnOrder[nextIndex];
       }
-      
+
       // Clear existing timer and start a new one
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
       setTimeout(() => startLocalTimer(), 100);
-      
+
       return {
         ...prev,
         usedWords: newUsedWords,
@@ -353,36 +357,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         currentTurn: nextPlayerId
       };
     });
-    
-    // Fetch definition (in a real implementation)
-    // For now, just set a mock definition
-    setTimeout(() => {
-      setDefinition({
-        'n': [`A ${word} is a type of word`],
-        'v': [`To ${word} means to use this word`]
-      });
-    }, 300);
-  };
-
-  // Handle definition request
-  const handleRequestDefinition = (word) => {
-    if (gameSettings.mode === 'single' || gameSettings.mode === 'local') {
-      // Mock definition for local games
-      setDefinition({
-        'n': [`A ${word} is a type of word`],
-        'v': [`To ${word} means to use this word`]
-      });
-      setShowDefinition(true);
-    } else {
-      requestDefinition(word);
-      setShowDefinition(true);
-    }
-  };
-
-  // Close definition modal
-  const handleCloseDefinition = () => {
-    setShowDefinition(false);
-  };
+  }
 
   // Handle power-up usage
   const handleUsePowerUp = (type, targetId) => {

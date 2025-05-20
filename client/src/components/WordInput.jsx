@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import '../assets/css/WordInput.css';
+import { setDefinition } from '../utils/definitionUtils';
 
 /**
  * Word input component for submitting words
@@ -59,6 +61,7 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
 
         if (!isBlacklisted) {
           console.log('Word:', word+",", 'First definition:', firstDef);
+          setDefinition(firstDef);
           return true;
         }
       }
@@ -84,16 +87,13 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const word = inputValue.trim().toLowerCase();
 
-    // Validate input
     if (!word) {
       setError('Please enter a word');
       return;
     }
 
-    // Check if word contains the wordpiece
     if (!word.includes(wordpiece.toLowerCase())) {
       setError(`Word must contain "${wordpiece}"`);
       return;
@@ -131,20 +131,13 @@ function WordInput({ onSubmit, disabled, wordpiece }) {
                 autoComplete="off"
                 className={error ? 'error' : ''}
             />
-            <button
-                type="submit"
-                disabled={disabled || !inputValue.trim()}
-            >
-              Submit
-            </button>
+            <button type="submit" disabled={disabled || !inputValue.trim()}>Submit</button>
           </div>
           {error && <div className="error-message">{error}</div>}
         </form>
 
         <div className="input-help">
-          <p>
-            Type any word containing <strong>"{wordpiece}"</strong>
-          </p>
+          <p>Type any word containing <strong>"{wordpiece}"</strong></p>
         </div>
       </div>
   );
