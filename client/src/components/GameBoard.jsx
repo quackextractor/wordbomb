@@ -603,7 +603,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
             {showDefinition && (
                 <InfoModal
                     word={lastSubmittedWord}
-                    definition={definition}
+                    definition={getDefinition() || 'No definition found.'}
                     onClose={handleCloseDefinition}
                 />
             )}
