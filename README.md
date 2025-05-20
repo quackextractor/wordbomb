@@ -1,6 +1,8 @@
 # WordBomb Kingfish
 
-WordBomb Kingfish is a real-time word trivia game where players race to type valid English words containing a given "wordpiece" under a time limit. The game supports single-player, local multiplayer, online multiplayer, and "Wordmaster" elimination modes.
+WordBomb Kingfish is a real-time word trivia game where players race to type valid English words containing a given "
+wordpiece" under a time limit. The game supports single-player, local multiplayer, online multiplayer, and "Wordmaster"
+elimination modes.
 
 ## Features
 

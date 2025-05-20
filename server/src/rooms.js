@@ -3,8 +3,6 @@
  * across different modules. This is needed because we're using ES modules,
  * which have their own scope.
  */
-
-// Create an empty Map to store rooms
 const rooms = new Map();
 
 export default rooms;

@@ -1,27 +1,27 @@
 .avatar-canvas-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
 }
 
 .avatar-canvas {
-  border: 2px solid #ddd;
-  border-radius: 50%;
-  cursor: crosshair;
-  background-color: white;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    cursor: crosshair;
+    background-color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .clear-canvas-btn {
-  background-color: #f0f4ff;
-  color: #6e8efb;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  transition: background-color 0.3s;
+    background-color: #f0f4ff;
+    color: #6e8efb;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
 }
 
 .clear-canvas-btn:hover {
-  background-color: #e0e8ff;
+    background-color: #e0e8ff;
 }
