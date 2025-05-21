@@ -9,6 +9,7 @@ const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece},
     const [inputValue, setInputValue] = useState('');
     const [error, setError] = useState('');
     const [usedWords, setUsedWords] = useState(new Set());
+    const [wordList, setWordList] = useState(null);
     const inputRef = useRef(null);
 
     useImperativeHandle(ref, () => ({
@@ -26,12 +27,33 @@ const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece},
         setError('');
     }, [wordpiece]);
 
+    // Load words.txt into memory once (client-side fetch)
+    useEffect(() => {
+        // Fetch words.txt from public/data or relative path
+        fetch('/data/words.txt')
+            .then(res => res.text())
+            .then(text => {
+                // Split by newlines, trim, and filter out empty lines
+                const words = new Set(text.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(Boolean));
+                setWordList(words);
+            });
+    }, []);
+
     const validateWord = async (word) => {
         const term = word.trim().toLowerCase();
 
         if (usedWords.has(term)) {
             setError('Word can only be used once.');
             return false;
+        }
+
+        // Check against local word list first
+        if (wordList && !wordList.has(term)) {
+            setError('Word not found in local dictionary.');
+            console.log(`Word "${term}" not found in local dictionary.`);
+        } else {
+            setError('');
+            return true;
         }
 
         const blacklistedTerms = ["initialism", "slang", "dialects"];
