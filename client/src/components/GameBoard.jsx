@@ -1,9 +1,7 @@
 import React, {useEffect, useState, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
-import InfoModal from './InfoModal';
 import useGameSocket from '../hooks/useGameSocket';
-import {getDefinition} from '../utils/definitionUtils';
 import '../assets/css/GameBoard.css';
 import GameHeader from './GameHeader';
 import WordpieceDisplay from './WordpieceDisplay';
@@ -12,6 +10,7 @@ import PowerUpsPanel from './PowerUpsPanel';
 import GameWaiting from './GameWaiting';
 import GameLoading from './GameLoading';
 import useLocalGame from '../hooks/useLocalGame';
+import WordDefinitionsPanel from './WordDefinitionsPanel';
 
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
@@ -37,8 +36,8 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         };
     });
 
-    const [showDefinition, setShowDefinition] = useState(false);
     const [lastSubmittedWord, setLastSubmittedWord] = useState('');
+    const [wordDefinitions, setWordDefinitions] = useState([]); // [{word, definitions: []}]
 
 
     const {
@@ -53,14 +52,12 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         turnOrder,
         currentTurn,
         gameStatus,
-        definition,
         error,
         createRoom,
         joinRoom,
         startGame,
         submitWord,
         usePowerUp,
-        requestDefinition,
         leaveRoom
     } = useGameSocket(player, gameSettings);
 
@@ -180,24 +177,37 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     const playerPowerUps = activeGameState?.powerUps[player.id] || {};
 
-    function handleRequestDefinition() {
-        if (!lastSubmittedWord) return;
-        requestDefinition(lastSubmittedWord);
-        setShowDefinition(true);
+    // Fetch definitions from Datamuse API (async, non-blocking)
+    async function fetchDefinitions(word) {
+        try {
+            const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`);
+            const data = await response.json();
+            if (data && data[0] && Array.isArray(data[0].defs) && data[0].defs.length > 0) {
+                // Up to 3 definitions
+                return data[0].defs.slice(0, 3).map(def => def.replace(/^\w+\t/, ''));
+            }
+        } catch (e) {
+            // ignore
+        }
+        return [];
     }
 
-    function handleCloseDefinition() {
-        setShowDefinition(false);
-    }
-
-    // Fix: define handleSubmitWord and handleUsePowerUp in the correct scope
+    // When a word is submitted, fetch its definition in the background
     const handleSubmitWord = (word) => {
+        // Fix: define handleSubmitWord and handleUsePowerUp in the correct scope
         if (isLocalMode) {
             handleLocalSubmitWord(word);
         } else {
             submitWord(word);
         }
         setLastSubmittedWord(word);
+        // Fetch definition async, update state when done
+        fetchDefinitions(word).then(defs => {
+            setWordDefinitions(prev => {
+                const newDefs = [{ word, definitions: defs.length ? defs : [] }, ...prev.filter(wd => wd.word !== word)];
+                return newDefs.slice(0, 2); // keep only last 2
+            });
+        });
     };
 
     const handleUsePowerUp = (type, targetId) => {
@@ -232,28 +242,14 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
                     disabled={gameSettings.mode !== 'single' && !isPlayerTurn}
                     wordpiece={activeGameState?.currentWordpiece}
                 />
-                {lastSubmittedWord && (
-                    <button
-                        className="definition-btn"
-                        onClick={() => handleRequestDefinition()}
-                    >
-                        Show definition for "{lastSubmittedWord}"
-                    </button>
-                )}
             </div>
+            <WordDefinitionsPanel wordDefinitions={wordDefinitions} />
             <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
             <PowerUpsPanel
                 playerPowerUps={playerPowerUps}
                 handleUsePowerUp={handleUsePowerUp}
                 isPlayerTurn={isPlayerTurn}
             />
-            {showDefinition && (
-                <InfoModal
-                    word={lastSubmittedWord}
-                    definition={getDefinition() || 'No definition found.'}
-                    onClose={handleCloseDefinition}
-                />
-            )}
         </div>
     );
 }
