@@ -3,12 +3,13 @@ import Player from './Player';
 import TurnManager from './TurnManager';
 
 export default class GameManager {
-    constructor(players = []) {
+    constructor(players = [], gameSettings = {}) { // Added gameSettings, default to empty object
         this.allPlayers = players.map(p => new Player(p)); // Ensure Player objects
         this.playingPlayers = [...this.allPlayers];
         this.roundManager = null; // Placeholder for future round logic
-        // Initialize TurnManager with player IDs from allPlayers
-        this.turnManager = new TurnManager(this.allPlayers.map(p => p.id));
+        // Initialize TurnManager with player IDs from allPlayers and baseTurnTime from gameSettings
+        const baseTurnTime = gameSettings.turnTime || 15;
+        this.turnManager = new TurnManager(this.allPlayers.map(p => p.id), baseTurnTime);
         this.isGameOver = false;
     }
 
@@ -18,6 +19,8 @@ export default class GameManager {
         this.isGameOver = false;
         
         if (this.playingPlayers.length > 0) {
+            // Explicitly set to turn 1 for the start of the game.
+            this.turnManager.turnNumber = 1;
             // Start the first turn with the first player in the playing list
             this.turnManager.startTurn(this.playingPlayers[0].id);
         }

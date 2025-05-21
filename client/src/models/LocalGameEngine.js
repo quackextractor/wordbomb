@@ -1,8 +1,8 @@
 import { generateWordpiece } from '../utils/wordpieceUtils';
 import GameManager from './GameManager';
 import Player from './Player';
-import PowerUp from './PowerUp'; // Assuming PowerUp is handled within Player or GameManager
-import TurnManager from './TurnManager'; // Assuming TurnManager is part of GameManager
+import PowerUp from './PowerUp'; 
+import TurnManager from './TurnManager';
 
 export default class LocalGameEngine {
     constructor(playerInfo, gameSettings, onStateUpdate, onGameOver) {
@@ -14,7 +14,6 @@ export default class LocalGameEngine {
         this.timerInterval = null;
         this.usedWords = new Set();
         this.currentWordpiece = null;
-        this.maxTurnTime = gameSettings.turnTime || 15; // Default to 15 seconds
     }
 
     initializeGame() {
@@ -40,7 +39,8 @@ export default class LocalGameEngine {
             }));
         }
 
-        this.gameManager = new GameManager(gamePlayers);
+        // Pass gameSettings to GameManager constructor
+        this.gameManager = new GameManager(gamePlayers, this.gameSettings);
         this.gameManager.startGame();
         this.currentWordpiece = generateWordpiece();
         this.usedWords.clear();
@@ -53,26 +53,27 @@ export default class LocalGameEngine {
     }
 
     _getCurrentPlayer() {
-        if (!this.gameManager) return null; // Check GameManager instance
-        return this.gameManager.getCurrentPlayer(); // Delegate to GameManager's method
+        if (!this.gameManager || !this.gameManager.turnManager) return null;
+        const currentPlayerId = this.gameManager.turnManager.currentPlayerId;
+        return this.gameManager.allPlayers.find(p => p.id === currentPlayerId);
     }
     
     _updateState(newState = {}) {
         const currentPlayer = this._getCurrentPlayer();
-        // Use playerIds from TurnManager for turn order
-        const turnOrder = this.gameManager.turnManager && this.gameManager.turnManager.playerIds
-            ? [...this.gameManager.turnManager.playerIds]
-            : [];
         const baseState = {
             status: this.gameManager.isGameOver ? 'over' : 'playing',
             currentWordpiece: this.currentWordpiece,
-            timer: this.maxTurnTime, // Reset timer display on state update
-            usedWords: new Set(this.usedWords), // Send a copy
+            // Timer reflects currentTurnTime from TurnManager
+            timer: this.gameManager.turnManager ? this.gameManager.turnManager.currentTurnTime : (this.gameSettings.turnTime || 15),
+            usedWords: new Set(this.usedWords),
             scores: Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])),
             lives: Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.hp])),
             powerUps: Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, {...p.powerUps}])),
-            turnOrder,
+            turnOrder: this.gameManager.turnManager && this.gameManager.turnManager.playerIds ? [...this.gameManager.turnManager.playerIds] : [],
             currentTurn: currentPlayer ? currentPlayer.id : null,
+            // Add turnNumber and maxTurnTime for potential UI display or debugging
+            turnNumber: this.gameManager.turnManager ? this.gameManager.turnManager.turnNumber : 0,
+            maxTurnTimeForTurn: this.gameManager.turnManager ? this.gameManager.turnManager.maxTurnTime : (this.gameSettings.turnTime || 15),
         };
         this.onStateUpdate({...baseState, ...newState});
     }
@@ -81,8 +82,11 @@ export default class LocalGameEngine {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
         }
-        let timeLeft = this.maxTurnTime;
-        this.onStateUpdate({ timer: timeLeft }); // Initial timer display
+        if (!this.gameManager || !this.gameManager.turnManager) return;
+
+        // timeLeft should be currentTurnTime as set by TurnManager.startTurn
+        let timeLeft = this.gameManager.turnManager.currentTurnTime;
+        this.onStateUpdate({ timer: timeLeft });
 
         this.timerInterval = setInterval(() => {
             timeLeft--;
@@ -104,29 +108,40 @@ export default class LocalGameEngine {
     handleTimeout() {
         this.stopTimer();
         const currentPlayer = this._getCurrentPlayer();
-        if (!currentPlayer) return;
+        if (!currentPlayer) {
+            console.error("handleTimeout: No current player found. Game might be over or in an inconsistent state.");
+            // Potentially check game over again or force an update.
+            if (this.gameManager.checkGameOver()) {
+                this._updateState({ status: 'over', timer: 0 });
+                this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])));
+            }
+            return;
+        }
 
         this.gameManager.changePlayerHp(-1, currentPlayer.id);
         
         if (this.gameManager.checkGameOver()) {
-            this._updateState({ status: 'over' });
+            this._updateState({ status: 'over', timer: 0 });
             this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])));
             return;
         }
 
-        // In single-player, if HP is lost, it's still the same player's turn with a new word.
-        // The HP bug fix: In single player, don't advance turn on timeout, just reset word & timer.
-        if (this.gameSettings.mode === 'single' && this.gameManager.playingPlayers.length === 1) {
-             this.currentWordpiece = generateWordpiece();
+        // Wordpiece remains the same on timeout.
+        // Call endTurn with didScore = false.
+        const activePlayerIds = this.gameManager.playingPlayers.map(p => p.id);
+        const nextPlayerId = this.gameManager.turnManager.endTurn(false, activePlayerIds, this.gameSettings.mode);
+
+        if (nextPlayerId) {
+            this.usedWords.clear(); // Clear used words for the next attempt/player
+            this._updateState(); // Update state to reflect new turn's time, current player etc.
+            this.startTimer();
         } else {
-            // Advance turn for local multiplayer
-            this.gameManager.turnManager.nextTurn();
-            this.currentWordpiece = generateWordpiece(); // New word for next player
+            // This case should ideally be caught by checkGameOver earlier or within endTurn.
+            // If endTurn returns null, it implies no next player could be determined (e.g., all players out).
+            console.warn("handleTimeout: endTurn returned no next player. Game should be over.");
+            this._updateState({ status: 'over' });
+            this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])));
         }
-        
-        this.usedWords.clear(); // Clear used words for the new turn/wordpiece
-        this._updateState();
-        this.startTimer(); // Restart timer for the current/next player
     }
 
     submitWord(word) {
@@ -137,78 +152,81 @@ export default class LocalGameEngine {
         const wordpieceLower = this.currentWordpiece.toLowerCase();
 
         if (!wordLower.includes(wordpieceLower)) {
-            // Invalid: word doesn't contain wordpiece
             return false; 
         }
         if (this.usedWords.has(wordLower)) {
-            // Invalid: word already used this turn
             return false; 
         }
 
         this.stopTimer();
         this.usedWords.add(wordLower);
 
-        // Award score
         const score = Math.max(1, word.length - this.currentWordpiece.length + 1);
         currentPlayer.changeScore(score);
 
-        // PowerUp chance
         if (word.length > 7 && Math.random() < 0.25) {
-            const types = ['reverse_turn', 'trap', 'extra_wordpiece']; // Example types
+            const types = ['reverse_turn', 'trap', 'extra_wordpiece'];
             const type = types[Math.floor(Math.random() * types.length)];
-            currentPlayer.addPowerUp(type, 1); // Assuming addPowerUp method in Player
+            currentPlayer.addPowerUp(type, 1);
         }
         
-        // Check game over (e.g. if score target reached, though not in original logic)
-        if (this.gameManager.checkGameOver()) { // Though typically game over is by HP
-            this._updateState({ status: 'over' });
+        // Check game over (e.g., if HP depleted due to a trap or other mechanic not yet implemented)
+        // Or if a score limit is reached (not currently a feature for local game)
+        if (this.gameManager.checkGameOver()) {
+            this._updateState({ status: 'over', timer: 0 });
             this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])));
             return true;
         }
 
-        // Advance turn
-        if (this.gameSettings.mode === 'local' || this.gameManager.playingPlayers.length > 1) {
-            this.gameManager.turnManager.nextTurn();
-        }
-        // For single player, it remains their turn, but they get a new word.
-        
+        // On successful submission, generate a new wordpiece.
         this.currentWordpiece = generateWordpiece();
-        this.usedWords.clear(); // Clear used words for the new turn
-        this._updateState();
-        this.startTimer();
+        
+        // Call endTurn with didScore = true.
+        const activePlayerIds = this.gameManager.playingPlayers.map(p => p.id);
+        const nextPlayerId = this.gameManager.turnManager.endTurn(true, activePlayerIds, this.gameSettings.mode);
+
+        if (nextPlayerId) {
+            this.usedWords.clear(); // Clear used words for the next player/turn
+            this._updateState(); // Update state to reflect new turn's time, current player, new wordpiece etc.
+            this.startTimer();
+        } else {
+            // This case should ideally be caught by checkGameOver earlier or within endTurn.
+            console.warn("submitWord: endTurn returned no next player. Game should be over.");
+            this._updateState({ status: 'over' });
+            this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map(p => [p.id, p.score])));
+        }
         return true;
     }
 
     usePowerUp(type, targetId) {
         const currentPlayer = this._getCurrentPlayer();
-        if (!currentPlayer || !currentPlayer.usePowerUp(type)) { // usePowerUp should return true if successful
-            this._updateState(); // Update to reflect power-up count change even if effect fails
+        if (!currentPlayer || !currentPlayer.usePowerUp(type)) {
+            this._updateState();
             return false;
         }
 
         let turnOrderChanged = false;
-        if (type === 'reverse_turn' && this.gameSettings.mode === 'local') {
+        if (type === 'reverse_turn' && this.gameSettings.mode === 'local' && this.gameManager.playingPlayers.length > 1) {
             this.gameManager.turnManager.reverseTurnOrder();
-            turnOrderChanged = true;
+            // After reversing, the TurnManager's currentPlayerId might need to be re-established
+            // if the current player index logic in reverseTurnOrder isn't perfectly aligned with active players.
+            // However, endTurn should handle picking the correct next player based on the new order.
+            // For now, we assume reverseTurnOrder correctly sets currentPlayerId or it will be corrected by next endTurn.
+            turnOrderChanged = true; 
+            // The current turn continues for the player who used the power-up, 
+            // but the *next* player will be based on the reversed order.
         }
-        // Add other power-up effects here, e.g., affecting targetId
-        // if (type === 'trap' && targetId) { ... }
+        // Add other power-up effects here
 
-        this._updateState(); // Update UI with new powerUp counts and potentially turn order
+        this._updateState(); 
         
-        // If turn order was reversed, the current player might change immediately
-        // The timer should continue for the (potentially new) current player
-        if (turnOrderChanged) {
-            this.stopTimer();
-            this.startTimer();
-        }
+        // If turn order was reversed, the timer continues for the current player.
+        // The next call to endTurn will determine the actual next player based on the new order.
+        // No need to restart timer here unless the power-up itself ends the turn or changes current player immediately.
         return true;
     }
 
     cleanup() {
         this.stopTimer();
-        // Any other cleanup logic
     }
-
-    
 }
