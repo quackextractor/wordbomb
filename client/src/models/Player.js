@@ -28,6 +28,15 @@ export default class Player {
         this.score += amount;
     }
 
+    addPowerUp(type, amount = 1) { // Added amount parameter, defaults to 1
+        if (this.powerUps.hasOwnProperty(type)) {
+            this.powerUps[type] += amount;
+        } else {
+            // Optionally handle unknown power-up types, e.g., by logging an error
+            console.warn(`Attempted to add unknown power-up type: ${type}`);
+        }
+    }
+
     usePowerUp(type) {
         if (this.powerUps[type] > 0) {
             this.powerUps[type]--;
