@@ -58,6 +58,8 @@ const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece},
 
         const blacklistedTerms = ["initialism", "slang", "dialects"];
 
+        /*
+
         try {
             const response = await axios.get(import.meta.env.VITE_DATAMUSE_API_URL || 'https://api.datamuse.com/words', {
                 params: {
@@ -87,12 +89,21 @@ const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece},
                 }
             }
 
+            
+
             return false;
+
         } catch (err) {
             setError('Error validating word. Please try again.');
             return false;
         }
+
+        */
+
+        return false;
     };
+
+        
 
     const handleChange = (e) => {
         setInputValue(e.target.value);
