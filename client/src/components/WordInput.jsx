@@ -1,14 +1,19 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, forwardRef, useImperativeHandle} from 'react';
 import axios from 'axios';
 import '../assets/css/WordInput.css';
 import {setDefinition} from '../utils/definitionUtils';
 import PropTypes from 'prop-types';
 
 
-function WordInput({onSubmit, disabled, wordpiece}) {
+const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece}, ref) {
     const [inputValue, setInputValue] = useState('');
     const [error, setError] = useState('');
+    const [usedWords, setUsedWords] = useState(new Set());
     const inputRef = useRef(null);
+
+    useImperativeHandle(ref, () => ({
+        clearUsedWords: () => setUsedWords(new Set())
+    }), []);
 
     useEffect(() => {
         if (!disabled && inputRef.current) {
@@ -23,6 +28,11 @@ function WordInput({onSubmit, disabled, wordpiece}) {
 
     const validateWord = async (word) => {
         const term = word.trim().toLowerCase();
+
+        if (usedWords.has(term)) {
+            setError('Word can only be used once.');
+            return false;
+        }
 
         const blacklistedTerms = ["initialism", "slang", "dialects"];
 
@@ -76,19 +86,22 @@ function WordInput({onSubmit, disabled, wordpiece}) {
             return;
         }
 
-        if (!word.includes(wordpiece.toLowerCase())) {
+        if (!word.includes(wordpiece?.toLowerCase())) {
             setError(`Word must contain "${wordpiece}"`);
             return;
         }
 
         const isValid = await validateWord(word);
         if (!isValid) {
-            setError('Invalid word - not in dictionary');
+            // Only set error if not already set by validateWord
+            if (!error && !usedWords.has(word)) {
+                setError('Word not found in dictionary.');
+            }
             return;
         }
 
+        setUsedWords(prev => new Set(prev).add(word));
         onSubmit(word);
-    
         setInputValue('');
     };
 
@@ -120,7 +133,7 @@ function WordInput({onSubmit, disabled, wordpiece}) {
             </div>
         </div>
     );
-}
+});
 
 WordInput.propTypes = {
     onSubmit: PropTypes.func.isRequired,

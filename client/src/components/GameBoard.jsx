@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
 import InfoModal from './InfoModal';
@@ -16,6 +16,7 @@ import useLocalGame from '../hooks/useLocalGame';
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
     const location = useLocation();
+    const wordInputRef = useRef(null);
 
 
     // Use custom hook for local game logic
@@ -121,6 +122,14 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
     }, [gameStatus]);
 
 
+    // Clear used words on game start
+    useEffect(() => {
+        if (wordInputRef.current && typeof wordInputRef.current.clearUsedWords === 'function') {
+            wordInputRef.current.clearUsedWords();
+        }
+    }, [startGame]);
+
+
     // Use localGameState/localPlayers from hook
     const isLocalMode = gameSettings.mode === 'single' || gameSettings.mode === 'local';
     const activeGameState = isLocalMode ? localGameState : {
@@ -218,6 +227,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
             <div className="game-content">
                 <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
                 <WordInput
+                    ref={wordInputRef}
                     onSubmit={handleSubmitWord}
                     disabled={gameSettings.mode !== 'single' && !isPlayerTurn}
                     wordpiece={activeGameState?.currentWordpiece}
