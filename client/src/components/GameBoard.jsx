@@ -1,4 +1,3 @@
-
 import React, {useEffect, useRef, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
@@ -6,6 +5,12 @@ import InfoModal from './InfoModal';
 import useGameSocket from '../hooks/useGameSocket';
 import {getDefinition} from '../utils/definitionUtils';
 import '../assets/css/GameBoard.css';
+import GameHeader from './GameHeader';
+import WordpieceDisplay from './WordpieceDisplay';
+import PlayersList from './PlayersList';
+import PowerUpsPanel from './PowerUpsPanel';
+import GameWaiting from './GameWaiting';
+import GameLoading from './GameLoading';
 
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
@@ -417,62 +422,26 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     if (!connected && !isLocalMode) {
         return (
-            <div className="game-loading">
-                <h2>Connecting to game server...</h2>
-                {error && <p className="error-message">{error}</p>}
-            </div>
+            <GameLoading message="Connecting to game server..." error={error} />
         );
     }
-
 
     if (!isLocalMode && gameStatus === 'waiting') {
         return (
-            <div className="game-waiting">
-                <h2>Waiting for players</h2>
-                <p>Room ID: <span className="room-id">{gameSettings.roomId}</span></p>
-                <p>Share this code with friends to join!</p>
-
-                <div className="players-list">
-                    <h3>Players:</h3>
-                    <ul>
-                        {players.map(p => (
-                            <li key={p.id} className="player-item">
-                                {p.isHost && <span className="host-badge">Host</span>}
-                                <span className="player-name">{p.name}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                {gameSettings.isHost && (
-                    <button
-                        className="start-game-btn"
-                        onClick={startGame}
-                        disabled={players.length < (gameSettings.mode === 'single' ? 1 : 2)}
-                    >
-                        Start Game
-                    </button>
-                )}
-
-                <button
-                    className="leave-game-btn"
-                    onClick={() => {
-                        if (!isLocalMode) leaveRoom();
-                        navigate('/');
-                    }}
-                >
-                    Leave Game
-                </button>
-            </div>
+            <GameWaiting
+                gameSettings={gameSettings}
+                players={players}
+                leaveRoom={leaveRoom}
+                navigate={navigate}
+                startGame={startGame}
+                isLocalMode={isLocalMode}
+            />
         );
     }
 
-
     if (isLocalMode && !localGameState) {
         return (
-            <div className="game-loading">
-                <h2>Initializing game...</h2>
-            </div>
+            <GameLoading message="Initializing game..." />
         );
     }
 
@@ -498,42 +467,20 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     return (
         <div className="game-board">
-            <div className="game-header">
-                <div className="room-info">
-                    <span>Mode: {gameSettings.mode}</span>
-                    {!isLocalMode && <span>Room: {gameSettings.roomId}</span>}
-                </div>
-
-                <div className="timer-container">
-                    <div className="timer" style={{
-                        '--progress': `${(activeGameState?.timer / (gameSettings.mode === 'wordmaster' ? 30 : 15)) * 100}%`
-                    }}>
-                        {activeGameState?.timer}s
-                    </div>
-                </div>
-
-                <div className="player-info">
-                    <span>Score: {playerScore}</span>
-                    <div className="lives">
-                        {Array.from({length: playerLives}).map((_, i) => (
-                            <span key={i} className="life-icon">❤️</span>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
+            <GameHeader
+                gameSettings={gameSettings}
+                isLocalMode={isLocalMode}
+                activeGameState={activeGameState}
+                playerScore={playerScore}
+                playerLives={playerLives}
+            />
             <div className="game-content">
-                <div className="wordpiece-container">
-                    <h2>Current Wordpiece:</h2>
-                    <div className="wordpiece">{activeGameState?.currentWordpiece}</div>
-                </div>
-
+                <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
                 <WordInput
                     onSubmit={handleSubmitWord}
                     disabled={gameSettings.mode !== 'single' && !isPlayerTurn}
                     wordpiece={activeGameState?.currentWordpiece}
                 />
-
                 {lastSubmittedWord && (
                     <button
                         className="definition-btn"
@@ -543,63 +490,12 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
                     </button>
                 )}
             </div>
-
-            <div className="players-container">
-                <h3>Players</h3>
-                <div className="players-grid">
-                    {activePlayers.map(p => (
-                        <div
-                            key={p.id}
-                            className={`player-card ${activeGameState?.currentTurn === p.id ? 'current-turn' : ''}`}
-                        >
-                            {p.avatar ? (
-                                <img src={p.avatar || "/placeholder.svg"} alt={p.name} className="player-avatar"/>
-                            ) : (
-                                <div
-                                    className="player-avatar-placeholder"
-                                    style={{backgroundColor: p.color}}
-                                >
-                                    {p.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                            <div className="player-details">
-                                <span className="player-name">{p.name}</span>
-                                <span className="player-score">Score: {activeGameState?.scores[p.id] || 0}</span>
-                                <div className="player-lives">
-                                    {Array.from({length: activeGameState?.lives[p.id] || 3}).map((_, i) => (
-                                        <span key={i} className="life-icon-small">❤️</span>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {Object.keys(playerPowerUps).length > 0 && (
-                <div className="power-ups-container">
-                    <h3>Power-ups</h3>
-                    <div className="power-ups-list">
-                        {Object.entries(playerPowerUps).map(([type, count]) => (
-                            count > 0 && (
-                                <div key={type} className="power-up-item">
-                                    <button
-                                        className="power-up-btn"
-                                        onClick={() => handleUsePowerUp(type)}
-                                        disabled={!isPlayerTurn}
-                                    >
-                                        {type === 'reverse_turn' && '🔄 Reverse Turn Order'}
-                                        {type === 'trap' && '🎯 Trap Opponent'}
-                                        {type === 'extra_wordpiece' && '➕ Extra Wordpiece'}
-                                        <span className="power-up-count">x{count}</span>
-                                    </button>
-                                </div>
-                            )
-                        ))}
-                    </div>
-                </div>
-            )}
-
+            <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
+            <PowerUpsPanel
+                playerPowerUps={playerPowerUps}
+                handleUsePowerUp={handleUsePowerUp}
+                isPlayerTurn={isPlayerTurn}
+            />
             {showDefinition && (
                 <InfoModal
                     word={lastSubmittedWord}
