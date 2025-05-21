@@ -62,7 +62,7 @@
 .definitions-panel {
     background: #f8faff;
     border-radius: 10px;
-    margin: 20px auto 0 auto;
+    margin: 20px auto 32px auto;
     padding: 18px 24px 10px 24px;
     max-width: 500px;
     box-shadow: 0 2px 10px rgba(110, 142, 251, 0.08);
@@ -106,4 +106,9 @@
     color: #aaa;
     font-style: italic;
     padding: 8px 0;
+}
+.def-separator {
+    border: none;
+    border-top: 1px solid #e3e8f0;
+    margin: 6px 0 6px 0;
 }

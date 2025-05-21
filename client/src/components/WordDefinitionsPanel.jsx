@@ -16,7 +16,10 @@ function WordDefinitionsPanel({ wordDefinitions }) {
                         <ul className="word-def-list">
                             {definitions.length > 0 ? (
                                 definitions.map((def, i) => (
-                                    <li className="word-def-item" key={i}>{def}</li>
+                                    <React.Fragment key={i}>
+                                        <li className="word-def-item">{def}</li>
+                                        {i < definitions.length - 1 && <hr className="def-separator" />}
+                                    </React.Fragment>
                                 ))
                             ) : (
                                 <li className="word-def-item">No definition found.</li>
