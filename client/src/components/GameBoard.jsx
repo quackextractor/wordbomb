@@ -24,8 +24,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         localPlayers,
         initializeLocalGame,
         handleLocalSubmitWord,
-        handleLocalUsePowerUp,
-        timerRef
+        handleLocalUsePowerUp
     } = useLocalGame(player, initialGameSettings);
 
 
@@ -68,13 +67,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         if (gameSettings.mode === 'single' || gameSettings.mode === 'local') {
             initializeLocalGame();
         }
-        return () => {
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-        };
-    }, [gameSettings.mode]);
+    }, [gameSettings.mode, initializeLocalGame]);
 
 
     useEffect(() => {
@@ -101,15 +94,11 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
 
         return () => {
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-
             if (gameSettings.mode !== 'single' && gameSettings.mode !== 'local') {
                 leaveRoom();
             }
         };
-    }, [connected, gameSettings.isHost, gameSettings.roomId, gameSettings.mode]);
+    }, [connected, gameSettings.isHost, gameSettings.roomId, gameSettings.mode, createRoom, joinRoom, leaveRoom]);
 
 
     useEffect(() => {
