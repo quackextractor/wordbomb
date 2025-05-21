@@ -194,7 +194,6 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     // When a word is submitted, fetch its definition in the background
     const handleSubmitWord = (word) => {
-        // Fix: define handleSubmitWord and handleUsePowerUp in the correct scope
         if (isLocalMode) {
             handleLocalSubmitWord(word);
         } else {
@@ -204,8 +203,9 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         // Fetch definition async, update state when done
         fetchDefinitions(word).then(defs => {
             setWordDefinitions(prev => {
+                // Allow up to 4 words in the panel
                 const newDefs = [{ word, definitions: defs.length ? defs : [] }, ...prev.filter(wd => wd.word !== word)];
-                return newDefs.slice(0, 2); // keep only last 2
+                return newDefs.slice(0, 4); // keep only last 4
             });
         });
     };
