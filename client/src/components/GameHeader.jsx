@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function GameHeader({ gameSettings, isLocalMode, activeGameState, playerScore, playerLives }) {
     return (
@@ -25,5 +26,13 @@ function GameHeader({ gameSettings, isLocalMode, activeGameState, playerScore, p
         </div>
     );
 }
+
+GameHeader.propTypes = {
+    gameSettings: PropTypes.object.isRequired,
+    isLocalMode: PropTypes.bool.isRequired,
+    activeGameState: PropTypes.object,
+    playerScore: PropTypes.number,
+    playerLives: PropTypes.number
+};
 
 export default GameHeader;

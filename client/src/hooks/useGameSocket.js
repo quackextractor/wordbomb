@@ -120,7 +120,7 @@ const useGameSocket = (player, gameSettings) => {
         Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
 
         return () => {
-            Object.keys(handlers).forEach((event) => socket.off(event));
+            Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn));
             socket.off('error');
         };
     }, []);

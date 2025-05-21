@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import axios from 'axios';
 import '../assets/css/WordInput.css';
 import {setDefinition} from '../utils/definitionUtils';
+import PropTypes from 'prop-types';
 
 
 function WordInput({onSubmit, disabled, wordpiece}) {
@@ -26,7 +27,7 @@ function WordInput({onSubmit, disabled, wordpiece}) {
         const blacklistedTerms = ["initialism", "slang", "dialects"];
 
         try {
-            const response = await axios.get('https://api.datamuse.com/words', {
+            const response = await axios.get(import.meta.env.VITE_DATAMUSE_API_URL || 'https://api.datamuse.com/words', {
                 params: {
                     sp: term,
                     md: 'd',
@@ -49,7 +50,6 @@ function WordInput({onSubmit, disabled, wordpiece}) {
                 );
 
                 if (!isBlacklisted) {
-                    console.log('Word:', word + ",", 'First definition:', firstDef);
                     setDefinition(firstDef);
                     return true;
                 }
@@ -57,7 +57,7 @@ function WordInput({onSubmit, disabled, wordpiece}) {
 
             return false;
         } catch (err) {
-            console.error('Validation error:', err);
+            setError('Error validating word. Please try again.');
             return false;
         }
     };
@@ -121,5 +121,11 @@ function WordInput({onSubmit, disabled, wordpiece}) {
         </div>
     );
 }
+
+WordInput.propTypes = {
+    onSubmit: PropTypes.func.isRequired,
+    disabled: PropTypes.bool,
+    wordpiece: PropTypes.string
+};
 
 export default WordInput;

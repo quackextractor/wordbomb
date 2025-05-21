@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function PowerUpsPanel({ playerPowerUps, handleUsePowerUp, isPlayerTurn }) {
     if (!Object.keys(playerPowerUps).length) return null;
@@ -26,5 +27,11 @@ function PowerUpsPanel({ playerPowerUps, handleUsePowerUp, isPlayerTurn }) {
         </div>
     );
 }
+
+PowerUpsPanel.propTypes = {
+    playerPowerUps: PropTypes.object.isRequired,
+    handleUsePowerUp: PropTypes.func.isRequired,
+    isPlayerTurn: PropTypes.bool.isRequired
+};
 
 export default PowerUpsPanel;

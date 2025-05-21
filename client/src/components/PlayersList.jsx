@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function PlayersList({ activePlayers, activeGameState }) {
     return (
@@ -11,17 +12,17 @@ function PlayersList({ activePlayers, activeGameState }) {
                         className={`player-card ${activeGameState?.currentTurn === p.id ? 'current-turn' : ''}`}
                     >
                         {p.avatar ? (
-                            <img src={p.avatar || "/placeholder.svg"} alt={p.name} className="player-avatar"/>
+                            <img src={p.avatar || "/placeholder.svg"} alt={p.nickname || p.name} className="player-avatar"/>
                         ) : (
                             <div
                                 className="player-avatar-placeholder"
                                 style={{backgroundColor: p.color}}
                             >
-                                {p.name.charAt(0).toUpperCase()}
+                                {(p.nickname || p.name || '').charAt(0).toUpperCase()}
                             </div>
                         )}
                         <div className="player-details">
-                            <span className="player-name">{p.name}</span>
+                            <span className="player-name">{p.nickname || p.name}</span>
                             <span className="player-score">Score: {activeGameState?.scores[p.id] || 0}</span>
                             <div className="player-lives">
                                 {Array.from({length: activeGameState?.lives[p.id] || 3}).map((_, i) => (
@@ -35,5 +36,10 @@ function PlayersList({ activePlayers, activeGameState }) {
         </div>
     );
 }
+
+PlayersList.propTypes = {
+    activePlayers: PropTypes.array.isRequired,
+    activeGameState: PropTypes.object
+};
 
 export default PlayersList;

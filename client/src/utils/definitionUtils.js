@@ -27,7 +27,7 @@ export const getDefinition = () => {
  * @returns {Object|string|null} The last definition
  */
 export const getLastDefinition = () => {
-    console.log('lastDefinition:', lastDefinition);
+    // Removed console.log for production
     return lastDefinition;
 };
 

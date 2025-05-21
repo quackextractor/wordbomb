@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, isLocalMode }) {
     return (
@@ -38,5 +39,14 @@ function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, is
         </div>
     );
 }
+
+GameWaiting.propTypes = {
+    gameSettings: PropTypes.object.isRequired,
+    players: PropTypes.array.isRequired,
+    leaveRoom: PropTypes.func.isRequired,
+    navigate: PropTypes.func.isRequired,
+    startGame: PropTypes.func.isRequired,
+    isLocalMode: PropTypes.bool.isRequired
+};
 
 export default GameWaiting;

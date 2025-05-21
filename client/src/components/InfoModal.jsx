@@ -1,4 +1,6 @@
 import React, {useEffect} from 'react';
+import DOMPurify from 'dompurify';
+import PropTypes from 'prop-types';
 import '../assets/css/InfoModal.css';
 
 function InfoModal({word, definition, onClose}) {
@@ -17,13 +19,13 @@ function InfoModal({word, definition, onClose}) {
     }, [onClose]);
     const formatDefinition = (def) => {
         if (!def) return 'No definition available.';
-        if (typeof def === 'string') return def;
+        if (typeof def === 'string') return DOMPurify.sanitize(def);
         if (typeof def === 'object') {
-            return Object.entries(def)
+            return DOMPurify.sanitize(Object.entries(def)
                 .map(([partOfSpeech, meanings]) => {
                     return `<strong>${partOfSpeech}</strong>: ${Array.isArray(meanings) ? meanings.join('; ') : meanings}`;
                 })
-                .join('<br><br>');
+                .join('<br><br>'));
         }
 
         return 'No definition available.';
@@ -44,5 +46,14 @@ function InfoModal({word, definition, onClose}) {
         </div>
     );
 }
+
+InfoModal.propTypes = {
+    word: PropTypes.string.isRequired,
+    definition: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.object
+    ]),
+    onClose: PropTypes.func.isRequired
+};
 
 export default InfoModal;

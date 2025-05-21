@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 function GameLoading({ message, error }) {
     return (
@@ -8,5 +9,10 @@ function GameLoading({ message, error }) {
         </div>
     );
 }
+
+GameLoading.propTypes = {
+    message: PropTypes.string.isRequired,
+    error: PropTypes.string
+};
 
 export default GameLoading;

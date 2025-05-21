@@ -1,5 +1,6 @@
 import React from 'react';
 import {useNavigate} from 'react-router-dom';
+import PropTypes from 'prop-types';
 import '../assets/css/ModeSelect.css';
 
 /**
@@ -33,33 +34,17 @@ function ModeSelect({player, gameSettings, setGameSettings}) {
 
     const handleModeSelect = async (mode) => {
         try {
-            if (mode === 'single' || mode === 'local') {
-                setGameSettings(prev => ({
-                    ...prev,
+            setGameSettings(prev => ({
+                ...prev,
+                mode,
+                isHost: true
+            }));
+            navigate('/game', {
+                state: {
                     mode,
                     isHost: true
-                }));
-
-                navigate('/game', {
-                    state: {
-                        mode,
-                        isHost: true
-                    }
-                });
-            } else {
-                setGameSettings(prev => ({
-                    ...prev,
-                    mode,
-                    isHost: true
-                }));
-
-                navigate('/game', {
-                    state: {
-                        mode,
-                        isHost: true
-                    }
-                });
-            }
+                }
+            });
         } catch (error) {
             console.error('Error selecting mode:', error);
         }
@@ -91,5 +76,11 @@ function ModeSelect({player, gameSettings, setGameSettings}) {
         </div>
     );
 }
+
+ModeSelect.propTypes = {
+    player: PropTypes.object.isRequired,
+    gameSettings: PropTypes.object.isRequired,
+    setGameSettings: PropTypes.func.isRequired
+};
 
 export default ModeSelect;

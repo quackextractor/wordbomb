@@ -1,5 +1,6 @@
 import React from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
+import PropTypes from 'prop-types';
 import '../assets/css/GameOver.css';
 
 /**
@@ -12,7 +13,7 @@ function GameOver({player}) {
     const {scores = {}, roomId, mode} = location.state || {};
 
     const sortedPlayers = Object.entries(scores)
-        .map(([id, score]) => ({id, score}))
+        .map(([id, score]) => ({id, score, nickname: id === player.id ? player.nickname : (scores[id]?.nickname || `Player ${sortedPlayers ? sortedPlayers.length : 1}`)}))
         .sort((a, b) => b.score - a.score);
 
     const playerRank = sortedPlayers.findIndex(p => p.id === player.id) + 1;
@@ -60,7 +61,7 @@ function GameOver({player}) {
                             className={p.id === player.id ? 'current-player' : ''}
                         >
                             <td>{index + 1}</td>
-                            <td>{p.id === player.id ? player.nickname : `Player ${index + 1}`}</td>
+                            <td>{p.nickname}</td>
                             <td>{p.score}</td>
                         </tr>
                     ))}
@@ -85,5 +86,10 @@ function GameOver({player}) {
         </div>
     );
 }
+
+GameOver.propTypes = {
+    player: PropTypes.object.isRequired,
+    gameSettings: PropTypes.object
+};
 
 export default GameOver;

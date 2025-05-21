@@ -61,6 +61,12 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         if (gameSettings.mode === 'single' || gameSettings.mode === 'local') {
             initializeLocalGame();
         }
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        };
     }, [gameSettings.mode]);
 
     const initializeLocalGame = () => {
@@ -111,6 +117,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
     const startLocalTimer = () => {
         if (timerRef.current) {
             clearInterval(timerRef.current);
+            timerRef.current = null;
         }
 
         timerRef.current = setInterval(() => {
