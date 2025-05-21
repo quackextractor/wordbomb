@@ -1,4 +1,3 @@
-
 .definitions-panel-horizontal.game-content-like {
     display: flex;
     flex-direction: column;
@@ -31,9 +30,10 @@
     justify-content: center;
     align-items: stretch;
     min-height: 140px;
-    max-width: 900px;
-    overflow: hidden;
+    max-width: 100%;
+    overflow: visible;
     position: relative;
+    box-sizing: border-box;
 }
 
 .wordcontainer-horizontal {
@@ -44,13 +44,14 @@
     border: 1px solid #f0f4ff;
     width: 25%;
     min-width: 0;
-    max-width: none;
-    flex: 0 0 25%;
+    max-width: 100%;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     transition: box-shadow 0.2s;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .wordcontainer-horizontal.fade-out {
@@ -152,6 +153,8 @@
     }
     .definitions-list-horizontal {
         max-width: 98vw;
+        padding-left: 0;
+        padding-right: 0;
     }
     .wordcontainer-horizontal {
         max-width: 24%;
@@ -168,6 +171,9 @@
 @media (max-width: 700px) {
     .definitions-list-horizontal {
         gap: 10px;
+        max-width: 100vw;
+        padding-left: 0;
+        padding-right: 0;
     }
     .wordcontainer-horizontal {
         max-width: 48%;
@@ -182,9 +188,12 @@
     }
     .definitions-list-horizontal {
         gap: 4px;
+        max-width: 100vw;
+        padding-left: 0;
+        padding-right: 0;
     }
     .wordcontainer-horizontal {
-        max-width: 98vw;
+        max-width: 100vw;
         min-width: 0;
         font-size: 0.85rem;
         padding: 6px 2px;
