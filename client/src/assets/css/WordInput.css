@@ -1,21 +1,28 @@
 .word-input-container {
     width: 100%;
     max-width: 600px;
+    margin: 0 auto;
+    padding: 24px 18px;
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(110, 142, 251, 0.06);
 }
 
 .input-wrapper {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 14px;
+    margin-bottom: 14px;
 }
 
 .word-input-container input {
     flex: 1;
-    padding: 15px;
+    padding: 18px;
     font-size: 1.2rem;
     border: 2px solid #ddd;
     border-radius: 8px;
     transition: border-color 0.3s;
+    background: #f8f9fa;
 }
 
 .word-input-container input:focus {
@@ -27,7 +34,7 @@
 }
 
 .word-input-container button {
-    padding: 15px 25px;
+    padding: 18px 30px;
     background-color: #6e8efb;
     color: white;
     font-size: 1.1rem;
@@ -53,8 +60,9 @@
 
 .input-help {
     text-align: center;
-    margin-top: 15px;
+    margin-top: 18px;
     color: #666;
+    font-size: 1rem;
 }
 
 .input-help strong {
@@ -64,9 +72,16 @@
 @media (max-width: 600px) {
     .input-wrapper {
         flex-direction: column;
+        gap: 8px;
+    }
+
+    .word-input-container {
+        padding: 12px 4px;
+        border-radius: 8px;
     }
 
     .word-input-container button {
         width: 100%;
+        padding: 15px 0;
     }
 }

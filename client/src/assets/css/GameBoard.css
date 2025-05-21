@@ -4,6 +4,7 @@
     min-height: 100vh;
     padding: 20px;
     background-color: #f8f9fa;
+    box-sizing: border-box;
 }
 
 .game-header {
@@ -15,6 +16,7 @@
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     margin-bottom: 20px;
+    margin-top: 18px;
 }
 
 .room-info {
@@ -75,8 +77,9 @@
     padding: 30px;
     background-color: white;
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 6px 18px rgba(110, 142, 251, 0.08);
     margin-bottom: 20px;
+    margin-top: 10px;
 }
 
 .wordpiece-container {
@@ -120,6 +123,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     padding: 20px;
     margin-bottom: 20px;
+    margin-top: 10px;
 }
 
 .players-container h3 {
@@ -198,6 +202,7 @@
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     padding: 20px;
+    margin-top: 10px;
 }
 
 .power-ups-container h3 {
@@ -350,6 +355,7 @@
         flex-direction: column;
         gap: 15px;
         align-items: center;
+        margin-top: 8px;
     }
 
     .room-info {
@@ -366,5 +372,6 @@
 
     .players-grid {
         grid-template-columns: 1fr;
+        gap: 10px;
     }
 }

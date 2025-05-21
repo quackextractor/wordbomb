@@ -2,9 +2,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     min-height: 100vh;
     padding: 40px 20px;
     background: linear-gradient(135deg, #6e8efb, #a777e3);
+    box-sizing: border-box;
 }
 
 .mode-select-title {
@@ -20,7 +22,9 @@
     gap: 20px;
     width: 100%;
     max-width: 1000px;
-    margin-bottom: 40px;
+    margin-top: 10px;
+    margin-bottom: 50px;
+    justify-items: center;
 }
 
 .mode-card {
@@ -31,6 +35,10 @@
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
     text-align: center;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .mode-card:hover {
@@ -68,10 +76,12 @@
 @media (max-width: 768px) {
     .mode-select-title {
         font-size: 2rem;
+        margin-bottom: 24px;
     }
 
     .modes-grid {
         grid-template-columns: 1fr;
         max-width: 400px;
+        gap: 14px;
     }
 }
