@@ -12,7 +12,6 @@ import PowerUpsPanel from './PowerUpsPanel';
 import GameWaiting from './GameWaiting';
 import GameLoading from './GameLoading';
 import useLocalGame from '../hooks/useLocalGame';
-import { generateWordpiece } from '../utils/wordpieceUtils';
 
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
@@ -26,7 +25,6 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
         initializeLocalGame,
         handleLocalSubmitWord,
         handleLocalUsePowerUp,
-        startLocalTimer,
         timerRef
     } = useLocalGame(player, initialGameSettings);
 

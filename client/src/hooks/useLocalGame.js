@@ -197,7 +197,6 @@ export default function useLocalGame(player, gameSettings) {
         initializeLocalGame,
         handleLocalSubmitWord,
         handleLocalUsePowerUp,
-        startLocalTimer,
         timerRef
     };
 }
