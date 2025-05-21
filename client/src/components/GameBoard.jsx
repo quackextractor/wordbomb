@@ -11,6 +11,7 @@ import GameWaiting from './GameWaiting';
 import GameLoading from './GameLoading';
 import useLocalGame from '../hooks/useLocalGame';
 import WordDefinitionsPanel from './WordDefinitionsPanel';
+import TimerBar from './TimerBar';
 
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
@@ -227,6 +228,10 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     return (
         <div className="game-board">
+            <TimerBar
+                maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === 'wordmaster' ? 30 : 15)}
+                timeLeft={Math.max(0, activeGameState?.timer || 0)}
+            />
             <GameHeader
                 gameSettings={gameSettings}
                 isLocalMode={isLocalMode}

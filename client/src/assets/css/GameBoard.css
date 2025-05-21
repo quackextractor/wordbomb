@@ -397,6 +397,29 @@
 .timerbar-label.timer-yellow { color: #f7b731; }
 .timerbar-label.timer-green { color: #2ecc40; }
 
+/* TIMER BAR SECTION */
+.timerbar-section {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0 -20px 10px -20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.timerbar-time-remaining {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 2px;
+    text-align: center;
+    z-index: 3;
+}
+
+.timerbar-time-remaining.timer-red { color: #e74c3c; }
+.timerbar-time-remaining.timer-yellow { color: #f7b731; }
+.timerbar-time-remaining.timer-green { color: #2ecc40; }
+
 /* SCORE INCREASE ANIMATION */
 .score-label {
     transition: color 0.2s, transform 0.2s;
