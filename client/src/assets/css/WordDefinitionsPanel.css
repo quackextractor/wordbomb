@@ -1,4 +1,4 @@
-/* Horizontal definitions panel styled like game-content */
+
 .definitions-panel-horizontal.game-content-like {
     display: flex;
     flex-direction: column;
@@ -13,8 +13,6 @@
     margin-left: auto;
     margin-right: auto;
 }
-
-
 
 .definitions-title {
     font-size: 1.2rem;
@@ -55,7 +53,6 @@
     overflow: hidden;
 }
 
-/* Fade out the last card before shifting */
 .wordcontainer-horizontal.fade-out {
     animation: fadeOutCard 0.3s forwards;
     opacity: 0;
@@ -66,7 +63,6 @@
     100% { opacity: 0; transform: scale(0.9); }
 }
 
-/* Shift all cards left after fade out */
 .definitions-list-horizontal.shift-out {
     animation: shiftLeftAfterFade 0.3s 0.3s cubic-bezier(0.4,0,0.2,1);
 }
@@ -113,12 +109,12 @@
     margin: 6px 0 6px 0;
 }
 
-/* Animation for new definition sliding in from left, others move right */
+
 .slide-new-left {
     animation: slideNewLeft 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
-/* When panel is full and a new word is added, shift all cards right by one card width */
+
 .shift-full {
     animation: shiftFullRight 0.5s cubic-bezier(0.4,0,0.2,1);
 }
@@ -143,7 +139,7 @@
         transform: translateX(0);
     }
     80% {
-        transform: translateX(calc(100% / 4)); /* shift by one card width (25%) */
+        transform: translateX(calc(100% / 4)); 
     }
     100% {
         transform: translateX(0);
