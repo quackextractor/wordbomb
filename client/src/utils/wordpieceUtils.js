@@ -1,0 +1,14 @@
+// Utility for generating random wordpieces
+export function generateWordpiece() {
+    const commonWordpieces = [
+        'ing', 'er', 'tion', 'ed', 'es', 'ly', 'ment',
+        'al', 'ity', 'ive', 'ize', 'ous', 'ful', 'less',
+        'able', 'ible', 'ance', 'ence', 'ism', 'ist', 'ness',
+        're', 'un', 'in', 'im', 'dis', 'en', 'em', 'non',
+        'de', 'ex', 'pre', 'pro', 'com', 'con', 'per',
+        'sub', 'sup', 'inter', 'trans', 'over', 'under',
+        'an', 'at', 'en', 'in', 'on', 'or', 'th', 'ch',
+        'sh', 'ph', 'wh', 'qu', 'sc', 'sp', 'st', 'tr'
+    ];
+    return commonWordpieces[Math.floor(Math.random() * commonWordpieces.length)];
+}

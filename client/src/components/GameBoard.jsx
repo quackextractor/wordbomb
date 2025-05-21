@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
 import InfoModal from './InfoModal';
@@ -11,10 +11,24 @@ import PlayersList from './PlayersList';
 import PowerUpsPanel from './PowerUpsPanel';
 import GameWaiting from './GameWaiting';
 import GameLoading from './GameLoading';
+import useLocalGame from '../hooks/useLocalGame';
+import { generateWordpiece } from '../utils/wordpieceUtils';
 
 function GameBoard({player, gameSettings: initialGameSettings}) {
     const navigate = useNavigate();
     const location = useLocation();
+
+
+    // Use custom hook for local game logic
+    const {
+        localGameState,
+        localPlayers,
+        initializeLocalGame,
+        handleLocalSubmitWord,
+        handleLocalUsePowerUp,
+        startLocalTimer,
+        timerRef
+    } = useLocalGame(player, initialGameSettings);
 
 
     const [gameSettings, setGameSettings] = useState(() => {
@@ -27,11 +41,6 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
 
     const [showDefinition, setShowDefinition] = useState(false);
     const [lastSubmittedWord, setLastSubmittedWord] = useState('');
-
-
-    const [localGameState, setLocalGameState] = useState(null);
-    const [localPlayers, setLocalPlayers] = useState([]);
-    const timerRef = useRef(null);
 
 
     const {
@@ -68,154 +77,6 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
             }
         };
     }, [gameSettings.mode]);
-
-    const initializeLocalGame = () => {
-        const gamePlayers = [
-            {
-                id: player.id,
-                name: player.nickname,
-                avatar: player.avatar,
-                color: player.color,
-                isHost: true
-            }
-        ];
-        if (gameSettings.mode === 'local') {
-            gamePlayers.push({
-                id: 'player2',
-                name: 'Player 2',
-                avatar: null,
-                color: '#a777e3',
-                isHost: false
-            });
-        }
-
-        setLocalPlayers(gamePlayers);
-        const initialState = {
-            status: 'playing',
-            currentWordpiece: generateWordpiece(),
-            timer: 15,
-            scores: {},
-            lives: {},
-            powerUps: {},
-            turnOrder: gamePlayers.map(p => p.id),
-            currentTurn: gamePlayers[0].id,
-            usedWords: new Set()
-        };
-        gamePlayers.forEach(p => {
-            initialState.scores[p.id] = 0;
-            initialState.lives[p.id] = 3;
-            initialState.powerUps[p.id] = {
-                reverse_turn: 0,
-                trap: 0,
-                extra_wordpiece: 0
-            };
-        });
-
-        setLocalGameState(initialState);
-        startLocalTimer();
-    };
-    const startLocalTimer = () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-
-        timerRef.current = setInterval(() => {
-            setLocalGameState(prev => {
-                if (!prev) return null;
-
-                const newTimer = prev.timer - 1;
-
-
-                if (newTimer <= 0) {
-                    clearInterval(timerRef.current);
-
-
-                    const currentPlayerId = prev.currentTurn;
-                    const newLives = {...prev.lives};
-                    newLives[currentPlayerId] = newLives[currentPlayerId] - 1;
-
-
-                    if (newLives[currentPlayerId] <= 0) {
-                        if (gameSettings.mode === 'single' ||
-                            Object.values(newLives).filter(life => life > 0).length <= 1) {
-
-                            setTimeout(() => {
-                                navigate('/game-over', {
-                                    state: {
-                                        scores: prev.scores,
-                                        mode: gameSettings.mode
-                                    }
-                                });
-                            }, 1000);
-
-                            return {
-                                ...prev,
-                                status: 'over',
-                                timer: 0,
-                                lives: newLives
-                            };
-                        }
-
-
-                        const newTurnOrder = prev.turnOrder.filter(id => id !== currentPlayerId);
-
-
-                        const nextPlayerId = newTurnOrder[0];
-
-                        return {
-                            ...prev,
-                            timer: 15,
-                            currentWordpiece: generateWordpiece(),
-                            lives: newLives,
-                            turnOrder: newTurnOrder,
-                            currentTurn: nextPlayerId
-                        };
-                    }
-
-
-                    let nextPlayerId = currentPlayerId;
-                    if (gameSettings.mode === 'local') {
-                        const currentIndex = prev.turnOrder.indexOf(currentPlayerId);
-                        const nextIndex = (currentIndex + 1) % prev.turnOrder.length;
-                        nextPlayerId = prev.turnOrder[nextIndex];
-                    }
-
-
-                    setTimeout(() => startLocalTimer(), 100);
-
-                    return {
-                        ...prev,
-                        timer: 15,
-                        currentWordpiece: generateWordpiece(),
-                        lives: newLives,
-                        currentTurn: nextPlayerId
-                    };
-                }
-
-                return {
-                    ...prev,
-                    timer: newTimer
-                };
-            });
-        }, 1000);
-    };
-
-
-    const generateWordpiece = () => {
-        const commonWordpieces = [
-            'ing', 'er', 'tion', 'ed', 'es', 'ly', 'ment',
-            'al', 'ity', 'ive', 'ize', 'ous', 'ful', 'less',
-            'able', 'ible', 'ance', 'ence', 'ism', 'ist', 'ness',
-            're', 'un', 'in', 'im', 'dis', 'en', 'em', 'non',
-            'de', 'ex', 'pre', 'pro', 'com', 'con', 'per',
-            'sub', 'sup', 'inter', 'trans', 'over', 'under',
-            'an', 'at', 'en', 'in', 'on', 'or', 'th', 'ch',
-            'sh', 'ph', 'wh', 'qu', 'sc', 'sp', 'st', 'tr'
-        ];
-
-        return commonWordpieces[Math.floor(Math.random() * commonWordpieces.length)];
-    };
 
 
     useEffect(() => {
@@ -273,146 +134,7 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
     }, [gameStatus]);
 
 
-    const handleSubmitWord = (word) => {
-        if (gameSettings.mode === 'single' || gameSettings.mode === 'local') {
-            handleLocalSubmitWord(word);
-        } else {
-            submitWord(word);
-        }
-        setLastSubmittedWord(word);
-    };
-
-
-    const handleLocalSubmitWord = (word) => {
-        if (!localGameState) return;
-
-        const {currentWordpiece, currentTurn, usedWords} = localGameState;
-
-
-        if (!word.toLowerCase().includes(currentWordpiece.toLowerCase())) {
-
-            return;
-        }
-
-        if (usedWords.has(word.toLowerCase())) {
-
-            return;
-        }
-
-
-        setLocalGameState(prev => {
-
-            const newUsedWords = new Set(prev.usedWords);
-            newUsedWords.add(word.toLowerCase());
-
-
-            const score = Math.max(1, word.length - currentWordpiece.length + 1);
-
-
-            const newScores = {...prev.scores};
-            newScores[currentTurn] = newScores[currentTurn] + score;
-
-
-            const newPowerUps = {...prev.powerUps};
-            if (word.length > 7 && Math.random() < 0.25) {
-
-                const powerUpTypes = ['reverse_turn', 'trap', 'extra_wordpiece'];
-                const randomPowerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-
-                newPowerUps[currentTurn] = {
-                    ...newPowerUps[currentTurn],
-                    [randomPowerUp]: (newPowerUps[currentTurn][randomPowerUp] || 0) + 1
-                };
-            }
-
-
-            let nextPlayerId = currentTurn;
-            if (gameSettings.mode === 'local') {
-                const currentIndex = prev.turnOrder.indexOf(currentTurn);
-                const nextIndex = (currentIndex + 1) % prev.turnOrder.length;
-                nextPlayerId = prev.turnOrder[nextIndex];
-            }
-
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-            setTimeout(() => startLocalTimer(), 100);
-
-            return {
-                ...prev,
-                usedWords: newUsedWords,
-                scores: newScores,
-                powerUps: newPowerUps,
-                timer: 15,
-                currentWordpiece: generateWordpiece(),
-                currentTurn: nextPlayerId
-            };
-        });
-    }
-
-
-    const handleUsePowerUp = (type, targetId) => {
-        if (gameSettings.mode === 'single' || gameSettings.mode === 'local') {
-            handleLocalUsePowerUp(type, targetId);
-        } else {
-
-            if (['trap', 'extra_wordpiece'].includes(type)) {
-
-                const otherPlayer = players.find(p => p.id !== player.id);
-                if (otherPlayer) {
-                    usePowerUp(type, otherPlayer.id);
-                }
-            } else {
-                usePowerUp(type);
-            }
-        }
-    };
-
-
-    const handleLocalUsePowerUp = (type, targetId) => {
-        if (!localGameState) return;
-
-        setLocalGameState(prev => {
-
-            const newPowerUps = {...prev.powerUps};
-            const currentPlayerId = prev.currentTurn;
-
-            if (!newPowerUps[currentPlayerId][type] || newPowerUps[currentPlayerId][type] <= 0) {
-                return prev;
-            }
-
-            newPowerUps[currentPlayerId] = {
-                ...newPowerUps[currentPlayerId],
-                [type]: newPowerUps[currentPlayerId][type] - 1
-            };
-
-
-            let newTurnOrder = [...prev.turnOrder];
-            let newCurrentTurn = prev.currentTurn;
-
-            if (type === 'reverse_turn' && gameSettings.mode === 'local') {
-
-                newTurnOrder.reverse();
-
-
-                const currentIndex = newTurnOrder.indexOf(currentPlayerId);
-
-
-                const nextIndex = (currentIndex + 1) % newTurnOrder.length;
-                newCurrentTurn = newTurnOrder[nextIndex];
-            }
-
-            return {
-                ...prev,
-                powerUps: newPowerUps,
-                turnOrder: newTurnOrder,
-                currentTurn: newCurrentTurn
-            };
-        });
-    };
-
-
+    // Use localGameState/localPlayers from hook
     const isLocalMode = gameSettings.mode === 'single' || gameSettings.mode === 'local';
     const activeGameState = isLocalMode ? localGameState : {
         currentWordpiece,
@@ -471,6 +193,31 @@ function GameBoard({player, gameSettings: initialGameSettings}) {
     function handleCloseDefinition() {
         setShowDefinition(false);
     }
+
+    // Fix: define handleSubmitWord and handleUsePowerUp in the correct scope
+    const handleSubmitWord = (word) => {
+        if (isLocalMode) {
+            handleLocalSubmitWord(word);
+        } else {
+            submitWord(word);
+        }
+        setLastSubmittedWord(word);
+    };
+
+    const handleUsePowerUp = (type, targetId) => {
+        if (isLocalMode) {
+            handleLocalUsePowerUp(type, targetId);
+        } else {
+            if (['trap', 'extra_wordpiece'].includes(type)) {
+                const otherPlayer = players.find(p => p.id !== player.id);
+                if (otherPlayer) {
+                    usePowerUp(type, otherPlayer.id);
+                }
+            } else {
+                usePowerUp(type);
+            }
+        }
+    };
 
     return (
         <div className="game-board">
