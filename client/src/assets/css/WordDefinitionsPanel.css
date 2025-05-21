@@ -14,10 +14,7 @@
     margin-right: auto;
 }
 
-.definitions-panel-horizontal.game-content-like.wider-panel {
-    max-width: 80vw;
-    width: 80vw;
-}
+
 
 .definitions-title {
     font-size: 1.2rem;
@@ -47,9 +44,10 @@
     padding: 14px 18px;
     box-shadow: 0 1px 4px rgba(110, 142, 251, 0.04);
     border: 1px solid #f0f4ff;
+    width: 25%;
     min-width: 0;
-    flex: 1 1 0;
-    max-width: 22%;
+    max-width: none;
+    flex: 0 0 25%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
