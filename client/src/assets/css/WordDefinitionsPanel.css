@@ -14,6 +14,11 @@
     margin-right: auto;
 }
 
+.definitions-panel-horizontal.game-content-like.wider-panel {
+    max-width: 80vw;
+    width: 80vw;
+}
+
 .definitions-title {
     font-size: 1.2rem;
     color: #6e8efb;
@@ -50,6 +55,27 @@
     justify-content: flex-start;
     transition: box-shadow 0.2s;
     overflow: hidden;
+}
+
+/* Fade out the last card before shifting */
+.wordcontainer-horizontal.fade-out {
+    animation: fadeOutCard 0.3s forwards;
+    opacity: 0;
+}
+
+@keyframes fadeOutCard {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.9); }
+}
+
+/* Shift all cards left after fade out */
+.definitions-list-horizontal.shift-out {
+    animation: shiftLeftAfterFade 0.3s 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+@keyframes shiftLeftAfterFade {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-25%); }
 }
 
 .word-title {
