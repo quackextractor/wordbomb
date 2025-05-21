@@ -56,9 +56,10 @@ const WordInput = forwardRef(function WordInput({onSubmit, disabled, wordpiece},
             return true;
         }
 
-        const blacklistedTerms = ["initialism", "slang", "dialects"];
+
 
         /*
+        const blacklistedTerms = ["initialism", "slang", "dialects"];
 
         try {
             const response = await axios.get(import.meta.env.VITE_DATAMUSE_API_URL || 'https://api.datamuse.com/words', {
