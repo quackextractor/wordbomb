@@ -9,21 +9,33 @@
 
 .game-header {
     max-width: 600px;
-    margin: 0 auto 20px auto;
+    margin: 0 auto 24px auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 22px 36px;
+    background: linear-gradient(90deg, #e3e8f0 0%, #f8f9fa 100%);
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(110, 142, 251, 0.10), 0 1.5px 6px rgba(110, 142, 251, 0.04);
+    border: 1.5px solid #e3e8f0;
+    position: relative;
+    z-index: 2;
 }
 
 .room-info {
     display: flex;
     flex-direction: column;
-    font-size: 0.9rem;
-    color: #666;
+    font-size: 1.1rem;
+    color: #6e8efb;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    gap: 2px;
+}
+
+.room-info span:first-child {
+    font-size: 1.2rem;
+    color: #4b5fa7;
+    font-weight: 700;
 }
 
 .timer-container {
@@ -53,7 +65,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 30px;
+    gap: 36px;
 }
 
 .player-info span {
@@ -62,21 +74,25 @@
 }
 
 .score-label {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #333;
-    margin-right: 18px;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #4b5fa7;
+    margin-right: 22px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 2px 8px #e3e8f0;
 }
 
 .lives {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
 .life-icon {
-    font-size: 2.2rem;
+    font-size: 2.5rem;
     color: #e74c3c;
+    filter: drop-shadow(0 2px 6px #f8b4b4);
+    transition: transform 0.2s;
 }
 
 .game-content {
