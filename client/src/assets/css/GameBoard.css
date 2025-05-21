@@ -350,6 +350,81 @@
     text-align: center;
 }
 
+/* TIMER BAR (full width, triple height, color transitions) */
+.timerbar-outer {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0 -20px 18px -20px;
+    height: 12px; /* triple original 4px */
+    background: #e3e8f0;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(110,142,251,0.08);
+    display: flex;
+    align-items: center;
+}
+
+.timerbar-inner {
+    height: 100%;
+    transition: width 1s linear, background 0.3s;
+    border-radius: 6px;
+}
+.timerbar-inner.timer-green {
+    background: linear-gradient(to right, #6ee87b, #6e8efb);
+}
+.timerbar-inner.timer-yellow {
+    background: linear-gradient(to right, #ffe066, #f7b731);
+}
+.timerbar-inner.timer-red {
+    background: linear-gradient(to right, #ff6b6b, #e74c3c);
+}
+
+.timerbar-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    pointer-events: none;
+    z-index: 2;
+    text-shadow: 0 1px 4px #fff, 0 0 2px #0002;
+}
+
+.timerbar-label.timer-red { color: #e74c3c; }
+.timerbar-label.timer-yellow { color: #f7b731; }
+.timerbar-label.timer-green { color: #2ecc40; }
+
+/* SCORE INCREASE ANIMATION */
+.score-label {
+    transition: color 0.2s, transform 0.2s;
+}
+.score-label.score-anim {
+    color: #4CAF50;
+    animation: scorePop 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes scorePop {
+    0% { transform: scale(1); color: #333; }
+    30% { transform: scale(1.3); color: #4CAF50; }
+    100% { transform: scale(1); color: #333; }
+}
+
+/* HEALTH DECREASE ANIMATION */
+.life-icon.life-anim {
+    animation: heartShake 0.7s cubic-bezier(0.4,0,0.2,1);
+    color: #e74c3c;
+}
+@keyframes heartShake {
+    0% { transform: scale(1); color: #e74c3c; }
+    20% { transform: scale(1.3) rotate(-10deg); }
+    40% { transform: scale(1.1) rotate(10deg); }
+    60% { transform: scale(1.2) rotate(-8deg); }
+    80% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1); color: #e74c3c; }
+}
+
 @media (max-width: 768px) {
     .game-header {
         flex-direction: column;
