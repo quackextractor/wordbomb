@@ -11,9 +11,13 @@ function GameOver({player}) {
     const location = useLocation();
 
     const {scores = {}, roomId, mode} = location.state || {};
-
+    
     const sortedPlayers = Object.entries(scores)
-        .map(([id, score]) => ({id, score, nickname: id === player.id ? player.nickname : (scores[id]?.nickname || `Player ${sortedPlayers ? sortedPlayers.length : 1}`)}))
+        .map(([id, score]) => ({
+            id,
+            score,
+            nickname: id === player.id ? player.nickname : (score.nickname || `Player`)
+        }))
         .sort((a, b) => b.score - a.score);
 
     const playerRank = sortedPlayers.findIndex(p => p.id === player.id) + 1;
