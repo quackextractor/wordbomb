@@ -1,45 +1,57 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types"
 
 function PlayersList({ activePlayers, activeGameState }) {
     return (
-        <div className="players-container">
-            <h3>Players</h3>
-            <div className="players-grid">
-                {activePlayers.map(p => (
+        <div className="card p-4 mb-4">
+            <h3 className="text-lg font-semibold mb-3">Players</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {activePlayers.map((p) => (
                     <div
                         key={p.id}
-                        className={`player-card ${activeGameState?.currentTurn === p.id ? 'current-turn' : ''}`}
+                        className={`bg-white/5 rounded-lg p-3 flex items-center transition-all duration-300 ${activeGameState?.currentTurn === p.id ? "ring-2 ring-purple-500 bg-purple-500/10" : "hover:bg-white/10"}`}
                     >
                         {p.avatar ? (
-                            <img src={p.avatar || "/placeholder.svg"} alt={p.nickname || p.name} className="player-avatar"/>
+                            <img
+                                src={p.avatar || "/placeholder.svg"}
+                                alt={p.nickname || p.name}
+                                className="w-10 h-10 rounded-full mr-3"
+                            />
                         ) : (
                             <div
-                                className="player-avatar-placeholder"
-                                style={{backgroundColor: p.color}}
+                                className="w-10 h-10 rounded-full mr-3 flex items-center justify-center text-lg font-bold"
+                                style={{ backgroundColor: p.color }}
                             >
-                                {(p.nickname || p.name || '').charAt(0).toUpperCase()}
+                                {(p.nickname || p.name || "").charAt(0).toUpperCase()}
                             </div>
                         )}
-                        <div className="player-details">
-                            <span className="player-name">{p.nickname || p.name}</span>
-                            <span className="player-score">Score: {activeGameState?.scores[p.id] || 0}</span>
-                            <div className="player-lives">
-                                {Array.from({length: activeGameState?.lives[p.id] || 3}).map((_, i) => (
-                                    <span key={i} className="life-icon-small">❤️</span>
-                                ))}
+                        <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">
+                                {p.nickname || p.name}
+                                {activeGameState?.currentTurn === p.id && (
+                                    <span className="ml-2 inline-block w-2 h-2 bg-purple-500 rounded-full animate-pulse-custom"></span>
+                                )}
+                            </div>
+                            <div className="flex items-center text-sm text-white/70">
+                                <span className="mr-2">Score: {activeGameState?.scores[p.id] || 0}</span>
+                                <div className="flex">
+                                    {Array.from({ length: activeGameState?.lives[p.id] || 3 }).map((_, i) => (
+                                        <span key={i} className="text-xs">
+                      ❤️
+                    </span>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
         </div>
-    );
+    )
 }
 
 PlayersList.propTypes = {
     activePlayers: PropTypes.array.isRequired,
-    activeGameState: PropTypes.object
-};
+    activeGameState: PropTypes.object,
+}
 
-export default PlayersList;
+export default PlayersList

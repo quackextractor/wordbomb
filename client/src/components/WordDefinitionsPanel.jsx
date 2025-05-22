@@ -1,12 +1,13 @@
-import React, { useRef, useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
-import '../assets/css/WordDefinitionsPanel.css';
+"use client"
+
+import { useRef, useEffect, useState } from "react"
+import PropTypes from "prop-types"
 
 function WordDefinitionsPanel({ wordDefinitions }) {
-    const [displayedDefs, setDisplayedDefs] = useState(wordDefinitions);
-    const [isShifting, setIsShifting] = useState(false);
-    const listRef = useRef(null);
-    const prevWords = useRef(wordDefinitions.map(wd => wd.word));
+    const [displayedDefs, setDisplayedDefs] = useState(wordDefinitions)
+    const [isShifting, setIsShifting] = useState(false)
+    const listRef = useRef(null)
+    const prevWords = useRef(wordDefinitions.map((wd) => wd.word))
 
     useEffect(() => {
         // If a new word is added and panel is full, animate out the last card, then shift
@@ -15,63 +16,60 @@ function WordDefinitionsPanel({ wordDefinitions }) {
             displayedDefs.length === 4 &&
             wordDefinitions[0].word !== prevWords.current[0]
         ) {
-            setIsShifting(true);
+            setIsShifting(true)
             // Wait for fade-out animation (300ms), then update displayedDefs
             setTimeout(() => {
-                setDisplayedDefs(wordDefinitions);
-                setIsShifting(false);
-            }, 300);
+                setDisplayedDefs(wordDefinitions)
+                setIsShifting(false)
+            }, 300)
         } else {
-            setDisplayedDefs(wordDefinitions);
+            setDisplayedDefs(wordDefinitions)
         }
-        prevWords.current = wordDefinitions.map(wd => wd.word);
-    }, [wordDefinitions]);
+        prevWords.current = wordDefinitions.map((wd) => wd.word)
+    }, [wordDefinitions])
 
     return (
-        <div className="definitions-panel-horizontal game-content-like wider-panel">
-            <h3 className="definitions-title">Recent Words & Definitions</h3>
-            <div
-                className={`definitions-list-horizontal${isShifting ? ' shift-out' : ''}`}
-                ref={listRef}
-            >
-                {displayedDefs.length === 0 && (
-                    <div className="definition-empty">No words submitted yet.</div>
-                )}
-                {displayedDefs.map(({ word, definitions }, idx) => (
-                    <div
-                        className={
-                            'wordcontainer-horizontal' +
-                            (isShifting && idx === 3 ? ' fade-out' : '')
-                        }
-                        key={word + idx}
-                    >
-                        <div className="word-title">{word}</div>
-                        <ul className="word-def-list">
-                            {definitions.length > 0 ? (
-                                definitions.map((def, i) => (
-                                    <React.Fragment key={i}>
-                                        <li className="word-def-item">{def}</li>
-                                        {i < definitions.length - 1 && <hr className="def-separator" />}
-                                    </React.Fragment>
-                                ))
-                            ) : (
-                                <li className="word-def-item">No definition found.</li>
-                            )}
-                        </ul>
-                    </div>
-                ))}
+        <div className="card p-4 mb-4">
+            <h3 className="text-lg font-semibold mb-3">Recent Words & Definitions</h3>
+            <div className={`transition-all duration-300 ${isShifting ? "opacity-50" : "opacity-100"}`}>
+                {displayedDefs.length === 0 && <div className="text-center py-6 text-white/50">No words submitted yet.</div>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {displayedDefs.map(({ word, definitions }, idx) => (
+                        <div
+                            className={`bg-white/5 rounded-lg overflow-hidden transition-all duration-300 ${
+                                isShifting && idx === 3 ? "opacity-0 scale-95" : "opacity-100 scale-100"
+                            }`}
+                            key={word + idx}
+                        >
+                            <div className="bg-white/10 p-3 font-medium text-center">{word}</div>
+                            <div className="p-3">
+                                {definitions.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {definitions.map((def, i) => (
+                                            <li key={i} className="text-sm text-white/70">
+                                                {i + 1}. {def}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-sm text-white/50 py-2">No definition found.</p>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
-    );
+    )
 }
 
 WordDefinitionsPanel.propTypes = {
     wordDefinitions: PropTypes.arrayOf(
         PropTypes.shape({
             word: PropTypes.string.isRequired,
-            definitions: PropTypes.arrayOf(PropTypes.string).isRequired
-        })
-    ).isRequired
-};
+            definitions: PropTypes.arrayOf(PropTypes.string).isRequired,
+        }),
+    ).isRequired,
+}
 
-export default WordDefinitionsPanel;
+export default WordDefinitionsPanel
