@@ -26,7 +26,9 @@ app.use(
   cors({
     origin: [
       "http://localhost:2139",
+      "http://127.0.0.1:2139", // Added this line to allow 127.0.0.1
       "http://localhost:5173",
+      "http://127.0.0.1:5173", // Added this line too
       "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
     ],
     methods: ["GET", "POST"],
@@ -43,7 +45,9 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:2139",
+      "http://127.0.0.1:2139", // Added this line to allow 127.0.0.1
       "http://localhost:5173",
+      "http://127.0.0.1:5173", // Added this line too
       "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
     ],
     methods: ["GET", "POST"],
