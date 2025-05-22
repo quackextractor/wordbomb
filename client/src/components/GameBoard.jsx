@@ -20,6 +20,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     const location = useLocation()
     const wordInputRef = useRef(null)
     const [showDamageEffect, setShowDamageEffect] = useState(false)
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
     const [gameSettings, setGameSettings] = useState(() => {
         const locationState = location.state || {}
         return {
@@ -72,22 +73,21 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     const activePlayers = isLocalMode ? localPlayers : players
 
-    // Memoize the handleUsePowerUp function to avoid unnecessary re-renders
-    const handleUsePowerUp = useCallback(
-        (type, targetId) => {
-            if (isLocalMode) {
-                handleLocalUsePowerUp(type, targetId)
-            } else {
-                const otherPlayer = players.find((p) => p.id !== player.id)
-                if (otherPlayer) {
-                    usePowerUp(type, otherPlayer.id)
-                } else {
-                    usePowerUp(type)
-                }
-            }
-        },
-        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
-    )
+    const handleLeaveGame = useCallback(() => {
+        setShowLeaveConfirm(true)
+    }, [])
+
+    const confirmLeaveGame = useCallback(() => {
+        if (!isLocalMode) {
+            leaveRoom()
+        }
+        navigate("/")
+        setShowLeaveConfirm(false)
+    }, [isLocalMode, leaveRoom, navigate])
+
+    const cancelLeaveGame = useCallback(() => {
+        setShowLeaveConfirm(false)
+    }, [])
 
     useEffect(() => {
         if (gameSettings.mode === "single" || gameSettings.mode === "local") {
@@ -146,25 +146,20 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         }
     }, [startGame])
 
-    // Improved damage effect detection using useEffect and refs
     useEffect(() => {
-        // Only proceed if we have game state and player ID
         if (!activeGameState?.lives || !player?.id) return
 
         const currentLives = activeGameState.lives[player.id] || 3
         const previousLives = prevLivesRef.current[player.id] || currentLives
 
-        // Debug logging to help diagnose issues
         console.debug(
             `Lives check - Player: ${player.id}, Current: ${currentLives}, Previous: ${previousLives}, Show Effect: ${currentLives < previousLives}`,
         )
 
-        // If lives decreased, show damage effect
         if (currentLives < previousLives) {
             console.log(`Player ${player.id} lost a life! Current: ${currentLives}, Previous: ${previousLives}`)
             setShowDamageEffect(true)
 
-            // Clear the effect after a delay
             const timer = setTimeout(() => {
                 setShowDamageEffect(false)
             }, 500)
@@ -172,19 +167,32 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
             return () => clearTimeout(timer)
         }
 
-        // Update the previous lives reference for next comparison
         prevLivesRef.current = { ...activeGameState.lives }
     }, [activeGameState?.lives, player?.id])
 
-    // Add a separate effect to handle game state initialization
     useEffect(() => {
         if (activeGameState?.lives && Object.keys(activeGameState.lives).length > 0) {
-            // Initialize prevLivesRef when game state first becomes available
             if (Object.keys(prevLivesRef.current).length === 0) {
                 prevLivesRef.current = { ...activeGameState.lives }
             }
         }
     }, [activeGameState?.lives])
+
+    const handleUsePowerUp = useCallback(
+        (type, targetId) => {
+            if (isLocalMode) {
+                handleLocalUsePowerUp(type, targetId)
+            } else {
+                const otherPlayer = players.find((p) => p.id !== player.id)
+                if (otherPlayer) {
+                    usePowerUp(type, otherPlayer.id)
+                } else {
+                    usePowerUp(type)
+                }
+            }
+        },
+        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
+    )
 
     if (!connected && !isLocalMode) {
         return <GameLoading message="Connecting to game server..." error={error} />
@@ -242,10 +250,55 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     return (
         <div className="game-container py-4 relative">
-            {/* Damage overlay with improved visibility */}
             <DamageOverlay isActive={showDamageEffect} />
 
+            {showLeaveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-indigo-950 border border-white/20 rounded-lg p-6 max-w-md w-full shadow-2xl animate-bounce-in">
+                        <h3 className="text-xl font-bold mb-4">Leave Game?</h3>
+                        <p className="text-white/70 mb-6">Are you sure you want to leave the game? Your progress will be lost.</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={confirmLeaveGame}
+                                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition-colors"
+                            >
+                                Leave Game
+                            </button>
+                            <button
+                                onClick={cancelLeaveGame}
+                                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors"
+                            >
+                                Continue Playing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-5xl mx-auto">
+                <div className="flex justify-end mb-4">
+                    <button
+                        onClick={handleLeaveGame}
+                        className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg text-sm font-medium transition-colors flex items-center"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-1.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                            />
+                        </svg>
+                        Leave Game
+                    </button>
+                </div>
+
                 <TimerBar
                     maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
                     timeLeft={Math.max(0, activeGameState?.timer || 0)}
