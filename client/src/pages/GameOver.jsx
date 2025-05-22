@@ -5,17 +5,29 @@ import PropTypes from "prop-types"
 /**
  * Game over screen showing final scores and rankings
  */
-function GameOver({ player }) {
+function GameOver({ player, gameSettings }) {
     const navigate = useNavigate()
     const location = useLocation()
 
-    const { scores = {}, roomId, mode } = location.state || {}
+    const { scores = {}, roomId, mode, localPlayers } = location.state || {}
+
+    // For local multiplayer, use the player names from localPlayers if available
+    const getPlayerName = (playerId) => {
+        if (mode === "local" && localPlayers) {
+            const localPlayer = localPlayers.find((p) => p.id === playerId)
+            if (localPlayer) {
+                return localPlayer.nickname || localPlayer.name || `Player ${playerId}`
+            }
+        }
+
+        return playerId === player.id ? player.nickname : scores[playerId]?.nickname || `Player ${playerId.slice(-1)}`
+    }
 
     const sortedPlayers = Object.entries(scores)
         .map(([id, score]) => ({
             id,
-            score,
-            nickname: id === player.id ? player.nickname : score.nickname || `Player`,
+            score: typeof score === "object" ? score.score || 0 : score || 0,
+            nickname: getPlayerName(id),
         }))
         .sort((a, b) => b.score - a.score)
 
@@ -29,6 +41,8 @@ function GameOver({ player }) {
                     isHost: true,
                 },
             })
+        } else if (mode === "local") {
+            navigate("/local-setup")
         } else {
             navigate("/mode-select")
         }

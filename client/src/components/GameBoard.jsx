@@ -103,7 +103,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                 }
             }
         },
-        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
+        [isLocalMode, handleLocalUsePowerUp, players, player.id],
     )
 
     useEffect(() => {
@@ -146,16 +146,17 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     }, [gameSettings.isHost, gameSettings.mode, room, startGame])
 
     useEffect(() => {
-        if (gameStatus === "over") {
+        if (gameStatus === "over" || (localGameState && localGameState.status === "over")) {
             navigate("/game-over", {
                 state: {
-                    scores,
+                    scores: isLocalMode ? localGameState.scores : scores,
                     roomId: gameSettings.roomId,
                     mode: gameSettings.mode,
+                    localPlayers: isLocalMode ? localPlayers : null,
                 },
             })
         }
-    }, [gameStatus, navigate, scores, gameSettings.roomId, gameSettings.mode])
+    }, [gameStatus, localGameState, navigate, scores, gameSettings.roomId, gameSettings.mode, isLocalMode, localPlayers])
 
     useEffect(() => {
         if (wordInputRef.current && typeof wordInputRef.current.clearUsedWords === "function") {
@@ -166,26 +167,33 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     useEffect(() => {
         if (!activeGameState?.lives || !player?.id) return
 
-        const currentLives = activeGameState.lives[player.id] || 3
-        const previousLives = prevLivesRef.current[player.id] || currentLives
+        // Get the current player ID based on whose turn it is
+        const currentPlayerId = activeGameState.currentTurn
 
-        console.debug(
-            `Lives check - Player: ${player.id}, Current: ${currentLives}, Previous: ${previousLives}, Show Effect: ${currentLives < previousLives}`,
-        )
+        // Only check for damage if we have previous lives data
+        if (Object.keys(prevLivesRef.current).length > 0) {
+            // For all players, check if they lost a life
+            Object.entries(activeGameState.lives).forEach(([playerId, currentLives]) => {
+                const previousLives = prevLivesRef.current[playerId] || currentLives
 
-        if (currentLives < previousLives) {
-            console.log(`Player ${player.id} lost a life! Current: ${currentLives}, Previous: ${previousLives}`)
-            setShowDamageEffect(true)
+                // Only show damage effect if lives decreased from the previous state
+                // AND this isn't just the initial state being set
+                if (currentLives < previousLives && previousLives !== 0) {
+                    console.log(`Player ${playerId} lost a life! Current: ${currentLives}, Previous: ${previousLives}`)
+                    setShowDamageEffect(true)
 
-            const timer = setTimeout(() => {
-                setShowDamageEffect(false)
-            }, 500)
+                    const timer = setTimeout(() => {
+                        setShowDamageEffect(false)
+                    }, 500)
 
-            return () => clearTimeout(timer)
+                    return () => clearTimeout(timer)
+                }
+            })
         }
 
+        // Update the previous lives reference
         prevLivesRef.current = { ...activeGameState.lives }
-    }, [activeGameState?.lives, player?.id])
+    }, [activeGameState?.lives])
 
     useEffect(() => {
         if (activeGameState?.lives && Object.keys(activeGameState.lives).length > 0) {
@@ -218,7 +226,12 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     // For local multiplayer, we need to find the current player based on turn
     const currentPlayerId = activeGameState?.currentTurn
-    const currentPlayer = activePlayers.find((p) => p.id === currentPlayerId) || player
+    const currentPlayer = activePlayers.find((p) => p.id === currentPlayerId) || {
+        id: "",
+        nickname: "Unknown Player",
+        avatar: null,
+        color: "#4287f5",
+    }
 
     // In local multiplayer, we don't disable the input - we just show who should be playing
     const isLocalMultiplayer = gameSettings.mode === "local"

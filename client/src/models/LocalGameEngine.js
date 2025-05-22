@@ -58,7 +58,8 @@ export default class LocalGameEngine {
             (p) =>
                 new Player({
                     id: p.id,
-                    name: p.nickname,
+                    name: p.nickname || p.name, // Ensure we use nickname if available
+                    nickname: p.nickname || p.name, // Add nickname explicitly
                     avatar: p.avatar,
                     color: p.color,
                     isHost: p.isHost,
@@ -152,8 +153,13 @@ export default class LocalGameEngine {
             return
         }
 
+        // Reduce player's HP by 1
         this.gameManager.changePlayerHp(-1, currentPlayer.id)
 
+        // Update state to reflect the HP change immediately
+        this._updateState()
+
+        // Check if the game is over after the HP change
         if (this.gameManager.checkGameOver()) {
             this._updateState({ status: "over", timer: 0 })
             this.onGameOver(Object.fromEntries(this.gameManager.allPlayers.map((p) => [p.id, p.score])))
@@ -235,13 +241,11 @@ export default class LocalGameEngine {
     usePowerUp(type, targetId) {
         const currentPlayer = this._getCurrentPlayer()
         if (!currentPlayer) {
-            this._updateState()
             return false
         }
 
         const powerUpUsed = currentPlayer.usePowerUp(type)
         if (!powerUpUsed) {
-            this._updateState()
             return false
         }
 
