@@ -174,7 +174,10 @@ function Lobby({ player, setPlayer }) {
                 )}
 
                 <div className="space-y-4">
-                    <button className="btn-primary w-full" onClick={handleCreateGame}>
+                    <button
+                        className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl focus:ring-purple-500 w-full"
+                        onClick={handleCreateGame}
+                    >
                         Create Game
                     </button>
 
@@ -195,7 +198,11 @@ function Lobby({ player, setPlayer }) {
                             placeholder="Enter Room ID"
                             className="input-field sm:flex-1"
                         />
-                        <button className="btn-secondary" onClick={handleJoinGame} disabled={isCheckingRoom}>
+                        <button
+                            className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white focus:ring-white"
+                            onClick={handleJoinGame}
+                            disabled={isCheckingRoom}
+                        >
                             {isCheckingRoom ? (
                                 <span className="flex items-center justify-center">
                   <svg

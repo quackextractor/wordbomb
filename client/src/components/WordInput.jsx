@@ -111,7 +111,7 @@ const WordInput = forwardRef(function WordInput({ onSubmit, disabled, wordpiece 
                         placeholder={disabled ? "Wait for your turn..." : "Type a word containing the wordpiece"}
                         disabled={disabled}
                         autoComplete="off"
-                        className={`input-field rounded-r-none ${error ? "border-red-500" : ""} ${disabled ? "bg-white/5 text-white/50" : ""}`}
+                        className={`w-full px-4 py-3 bg-white/10 border border-white/20 rounded-l-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${error ? "border-red-500" : ""} ${disabled ? "bg-white/5 text-white/50" : ""}`}
                     />
                     <button
                         type="submit"

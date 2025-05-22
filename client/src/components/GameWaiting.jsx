@@ -35,7 +35,7 @@ function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, is
                 <div className="space-y-3">
                     {gameSettings.isHost && (
                         <button
-                            className={`btn-primary w-full ${players.length < (gameSettings.mode === "single" ? 1 : 2) ? "opacity-50 cursor-not-allowed" : ""}`}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl focus:ring-purple-500 w-full ${players.length < (gameSettings.mode === "single" ? 1 : 2) ? "opacity-50 cursor-not-allowed" : ""}`}
                             onClick={startGame}
                             disabled={players.length < (gameSettings.mode === "single" ? 1 : 2)}
                         >
@@ -43,7 +43,7 @@ function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, is
                         </button>
                     )}
                     <button
-                        className="btn-danger w-full"
+                        className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-red-500 hover:bg-red-600 text-white focus:ring-red-500 w-full"
                         onClick={() => {
                             if (!isLocalMode) leaveRoom()
                             navigate("/")

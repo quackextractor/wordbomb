@@ -76,7 +76,10 @@ function ModeSelect({ player, gameSettings, setGameSettings }) {
             </div>
 
             <div className="flex justify-center">
-                <button className="btn-secondary" onClick={() => navigate("/")}>
+                <button
+                    className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white focus:ring-white"
+                    onClick={() => navigate("/")}
+                >
                     Back to Lobby
                 </button>
             </div>

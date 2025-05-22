@@ -82,10 +82,16 @@ function GameOver({ player }) {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button className="btn-primary" onClick={handlePlayAgain}>
+                    <button
+                        className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl focus:ring-purple-500"
+                        onClick={handlePlayAgain}
+                    >
                         Play Again
                     </button>
-                    <button className="btn-secondary" onClick={handleReturnToLobby}>
+                    <button
+                        className="px-6 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-900 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white focus:ring-white"
+                        onClick={handleReturnToLobby}
+                    >
                         Return to Lobby
                     </button>
                 </div>
