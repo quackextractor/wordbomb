@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import PropTypes from "prop-types"
 import HeartIcon from "./HeartIcon"
 
@@ -10,12 +10,14 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
     const [prevLives, setPrevLives] = useState(playerLives)
     const [lifeAnim, setLifeAnim] = useState(false)
     const [animatingHeartIndex, setAnimatingHeartIndex] = useState(-1)
+    const animationTimeoutRef = useRef(null)
 
     // Score animation
     useEffect(() => {
         if (playerScore > prevScore) {
             setScoreAnim(true)
-            setTimeout(() => setScoreAnim(false), 700)
+            const timeout = setTimeout(() => setScoreAnim(false), 700)
+            return () => clearTimeout(timeout)
         }
         setPrevScore(playerScore)
     }, [playerScore, prevScore])
@@ -26,10 +28,26 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
             setLifeAnim(true)
             // Set the index of the heart that's being lost
             setAnimatingHeartIndex(playerLives)
-            setTimeout(() => {
+
+            // Clear any existing timeout to prevent conflicts
+            if (animationTimeoutRef.current) {
+                clearTimeout(animationTimeoutRef.current)
+            }
+
+            // Set new timeout and store the reference
+            animationTimeoutRef.current = setTimeout(() => {
                 setLifeAnim(false)
                 setAnimatingHeartIndex(-1)
+                animationTimeoutRef.current = null
             }, 700)
+
+            // Cleanup function to clear timeout if component unmounts or effect runs again
+            return () => {
+                if (animationTimeoutRef.current) {
+                    clearTimeout(animationTimeoutRef.current)
+                    animationTimeoutRef.current = null
+                }
+            }
         }
         setPrevLives(playerLives)
     }, [playerLives, prevLives])

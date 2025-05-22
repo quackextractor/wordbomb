@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import WordInput from "./WordInput"
 import useGameSocket from "../hooks/useGameSocket"
@@ -29,7 +29,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     })
     const [lastSubmittedWord, setLastSubmittedWord] = useState("")
     const [wordDefinitions, setWordDefinitions] = useState([]) // [{word, definitions: []}]
-    const [prevLives, setPrevLives] = useState({})
+    const prevLivesRef = useRef({})
 
     const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
         useLocalGame(player, gameSettings)
@@ -72,14 +72,22 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     const activePlayers = isLocalMode ? localPlayers : players
 
-    const handleUsePowerUp = (type, targetId) => {
-        const otherPlayer = players.find((p) => p.id !== player.id)
-        if (otherPlayer) {
-            usePowerUp(type, otherPlayer.id)
-        } else {
-            usePowerUp(type)
-        }
-    }
+    // Memoize the handleUsePowerUp function to avoid unnecessary re-renders
+    const handleUsePowerUp = useCallback(
+        (type, targetId) => {
+            if (isLocalMode) {
+                handleLocalUsePowerUp(type, targetId)
+            } else {
+                const otherPlayer = players.find((p) => p.id !== player.id)
+                if (otherPlayer) {
+                    usePowerUp(type, otherPlayer.id)
+                } else {
+                    usePowerUp(type)
+                }
+            }
+        },
+        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
+    )
 
     useEffect(() => {
         if (gameSettings.mode === "single" || gameSettings.mode === "local") {
@@ -138,19 +146,45 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         }
     }, [startGame])
 
+    // Improved damage effect detection using useEffect and refs
     useEffect(() => {
+        // Only proceed if we have game state and player ID
         if (!activeGameState?.lives || !player?.id) return
 
         const currentLives = activeGameState.lives[player.id] || 3
-        const previousLives = prevLives[player.id] || currentLives
+        const previousLives = prevLivesRef.current[player.id] || currentLives
 
+        // Debug logging to help diagnose issues
+        console.debug(
+            `Lives check - Player: ${player.id}, Current: ${currentLives}, Previous: ${previousLives}, Show Effect: ${currentLives < previousLives}`,
+        )
+
+        // If lives decreased, show damage effect
         if (currentLives < previousLives) {
+            console.log(`Player ${player.id} lost a life! Current: ${currentLives}, Previous: ${previousLives}`)
             setShowDamageEffect(true)
-            setTimeout(() => setShowDamageEffect(false), 500)
+
+            // Clear the effect after a delay
+            const timer = setTimeout(() => {
+                setShowDamageEffect(false)
+            }, 500)
+
+            return () => clearTimeout(timer)
         }
 
-        setPrevLives(activeGameState.lives)
-    }, [activeGameState?.lives, player?.id, prevLives])
+        // Update the previous lives reference for next comparison
+        prevLivesRef.current = { ...activeGameState.lives }
+    }, [activeGameState?.lives, player?.id])
+
+    // Add a separate effect to handle game state initialization
+    useEffect(() => {
+        if (activeGameState?.lives && Object.keys(activeGameState.lives).length > 0) {
+            // Initialize prevLivesRef when game state first becomes available
+            if (Object.keys(prevLivesRef.current).length === 0) {
+                prevLivesRef.current = { ...activeGameState.lives }
+            }
+        }
+    }, [activeGameState?.lives])
 
     if (!connected && !isLocalMode) {
         return <GameLoading message="Connecting to game server..." error={error} />
@@ -208,6 +242,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     return (
         <div className="game-container py-4 relative">
+            {/* Damage overlay with improved visibility */}
             <DamageOverlay isActive={showDamageEffect} />
 
             <div className="max-w-5xl mx-auto">
@@ -240,7 +275,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                 {Object.keys(playerPowerUps).length > 0 && (
                     <PowerUpsPanel
                         playerPowerUps={playerPowerUps}
-                        handleUsePowerUp={isLocalMode ? handleLocalUsePowerUp : handleUsePowerUp}
+                        handleUsePowerUp={handleUsePowerUp}
                         isPlayerTurn={isPlayerTurn}
                     />
                 )}
