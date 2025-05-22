@@ -37,6 +37,12 @@ function ModeSelect({ player, gameSettings, setGameSettings }) {
 
     const handleModeSelect = async (mode) => {
         try {
+            if (mode === "local") {
+                // For local multiplayer, navigate to setup screen
+                navigate("/local-setup")
+                return
+            }
+
             setGameSettings((prev) => ({
                 ...prev,
                 mode,

@@ -14,6 +14,7 @@ import useLocalGame from "../hooks/useLocalGame"
 import WordDefinitionsPanel from "./WordDefinitionsPanel"
 import TimerBar from "./TimerBar"
 import DamageOverlay from "./DamageOverlay"
+import CurrentPlayerIndicator from "./CurrentPlayerIndicator"
 
 function GameBoard({ player, gameSettings: initialGameSettings }) {
     const navigate = useNavigate()
@@ -88,6 +89,22 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     const cancelLeaveGame = useCallback(() => {
         setShowLeaveConfirm(false)
     }, [])
+
+    const handleUsePowerUp = useCallback(
+        (type, targetId) => {
+            if (isLocalMode) {
+                handleLocalUsePowerUp(type, targetId)
+            } else {
+                const otherPlayer = players.find((p) => p.id !== player.id)
+                if (otherPlayer) {
+                    usePowerUp(type, otherPlayer.id)
+                } else {
+                    usePowerUp(type)
+                }
+            }
+        },
+        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
+    )
 
     useEffect(() => {
         if (gameSettings.mode === "single" || gameSettings.mode === "local") {
@@ -178,22 +195,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         }
     }, [activeGameState?.lives])
 
-    const handleUsePowerUp = useCallback(
-        (type, targetId) => {
-            if (isLocalMode) {
-                handleLocalUsePowerUp(type, targetId)
-            } else {
-                const otherPlayer = players.find((p) => p.id !== player.id)
-                if (otherPlayer) {
-                    usePowerUp(type, otherPlayer.id)
-                } else {
-                    usePowerUp(type)
-                }
-            }
-        },
-        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
-    )
-
     if (!connected && !isLocalMode) {
         return <GameLoading message="Connecting to game server..." error={error} />
     }
@@ -215,7 +216,14 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         return <GameLoading message="Initializing game..." />
     }
 
-    const isPlayerTurn = activeGameState?.currentTurn === player.id
+    // For local multiplayer, we need to find the current player based on turn
+    const currentPlayerId = activeGameState?.currentTurn
+    const currentPlayer = activePlayers.find((p) => p.id === currentPlayerId) || player
+
+    // In local multiplayer, we don't disable the input - we just show who should be playing
+    const isLocalMultiplayer = gameSettings.mode === "local"
+    const disableInput = !isLocalMultiplayer && currentPlayerId !== player.id
+
     const playerScore = activeGameState?.scores[player.id] || 0
     const playerLives = activeGameState?.lives[player.id] || 3
     const playerPowerUps = activeGameState?.powerUps[player.id] || {}
@@ -312,13 +320,16 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                     playerLives={playerLives}
                 />
 
+                {isLocalMultiplayer && <CurrentPlayerIndicator currentPlayer={currentPlayer} players={activePlayers} />}
+
                 <div className="card p-6 mb-4">
                     <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
                     <WordInput
                         ref={wordInputRef}
                         onSubmit={handleSubmitWord}
-                        disabled={gameSettings.mode !== "single" && !isPlayerTurn}
+                        disabled={disableInput}
                         wordpiece={activeGameState?.currentWordpiece}
+                        currentPlayerId={currentPlayerId}
                     />
                 </div>
 
@@ -329,7 +340,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                     <PowerUpsPanel
                         playerPowerUps={playerPowerUps}
                         handleUsePowerUp={handleUsePowerUp}
-                        isPlayerTurn={isPlayerTurn}
+                        isPlayerTurn={currentPlayerId === player.id}
                     />
                 )}
             </div>

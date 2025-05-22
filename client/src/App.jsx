@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Navigate, Route, Routes } from "react-router-dom"
 import Lobby from "./pages/Lobby"
 import ModeSelect from "./pages/ModeSelect"
+import LocalMultiplayerSetup from "./pages/LocalMultiplayerSetup"
 import GameBoard from "./components/GameBoard"
 import GameOver from "./pages/GameOver"
 
@@ -19,6 +20,7 @@ function App() {
         roomId: null,
         mode: null,
         isHost: false,
+        localPlayers: [],
     })
 
     const ProtectedRoute = ({ children }) => {
@@ -38,6 +40,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <ModeSelect player={player} gameSettings={gameSettings} setGameSettings={setGameSettings} />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/local-setup"
+                        element={
+                            <ProtectedRoute>
+                                <LocalMultiplayerSetup player={player} setGameSettings={setGameSettings} />
                             </ProtectedRoute>
                         }
                     />

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react"
 import PropTypes from "prop-types"
 
-const WordInput = forwardRef(function WordInput({ onSubmit, disabled, wordpiece }, ref) {
+const WordInput = forwardRef(function WordInput({ onSubmit, disabled, wordpiece, currentPlayerId }, ref) {
     const [inputValue, setInputValue] = useState("")
     const [error, setError] = useState("")
     const [usedWords, setUsedWords] = useState(new Set())
@@ -22,12 +22,12 @@ const WordInput = forwardRef(function WordInput({ onSubmit, disabled, wordpiece 
         if (!disabled && inputRef.current) {
             inputRef.current.focus()
         }
-    }, [disabled])
+    }, [disabled, currentPlayerId])
 
     useEffect(() => {
         setInputValue("")
         setError("")
-    }, [wordpiece])
+    }, [wordpiece, currentPlayerId])
 
     // Load words.txt into memory once (client-side fetch)
     useEffect(() => {
@@ -143,6 +143,7 @@ WordInput.propTypes = {
     onSubmit: PropTypes.func.isRequired,
     disabled: PropTypes.bool,
     wordpiece: PropTypes.string,
+    currentPlayerId: PropTypes.string,
 }
 
 export default WordInput
