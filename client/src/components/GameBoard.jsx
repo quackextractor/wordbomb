@@ -87,10 +87,21 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         if (!isLocalMode) {
             leaveRoom()
         }
-        navigate("/")
-        setShowLeaveConfirm(false)
-    }, [isLocalMode, leaveRoom, navigate])
 
+        // Navigate to local setup with previous players in local mode
+        if (gameSettings.mode === "local") {
+            navigate("/local-setup", {
+                state: {
+                    previousPlayers: gameSettings.localPlayers, // Use initial setup players
+                },
+            })
+        } else {
+            navigate("/") // Default navigation for other modes
+        }
+        setShowLeaveConfirm(false)
+    }, [isLocalMode, leaveRoom, navigate, gameSettings.mode, gameSettings.localPlayers])
+
+    // Add this new function to handle canceling the leave game dialog
     const cancelLeaveGame = useCallback(() => {
         setShowLeaveConfirm(false)
     }, [])
