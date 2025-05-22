@@ -101,7 +101,7 @@ function LocalMultiplayerSetup({ player, setGameSettings }) {
       isHost: true,
       localPlayers: localPlayers,
       lives: 3, // Default lives
-      turnTime: 15, // Default turn time
+      turnTime: 1, // Default turn time
     }))
 
     navigate("/game", {

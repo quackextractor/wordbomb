@@ -103,7 +103,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                 }
             }
         },
-        [isLocalMode, handleLocalUsePowerUp, players, player.id],
+        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
     )
 
     useEffect(() => {
@@ -166,9 +166,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     useEffect(() => {
         if (!activeGameState?.lives || !player?.id) return
-
-        // Get the current player ID based on whose turn it is
-        const currentPlayerId = activeGameState.currentTurn
 
         // Only check for damage if we have previous lives data
         if (Object.keys(prevLivesRef.current).length > 0) {
@@ -237,8 +234,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     const isLocalMultiplayer = gameSettings.mode === "local"
     const disableInput = !isLocalMultiplayer && currentPlayerId !== player.id
 
-    const playerScore = activeGameState?.scores[player.id] || 0
-    const playerLives = activeGameState?.lives[player.id] || 3
     const playerPowerUps = activeGameState?.powerUps[player.id] || {}
 
     async function fetchDefinitions(word) {
@@ -329,8 +324,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                     gameSettings={gameSettings}
                     isLocalMode={isLocalMode}
                     activeGameState={activeGameState}
-                    playerScore={playerScore}
-                    playerLives={playerLives}
+                    player={player}
                 />
 
                 {isLocalMultiplayer && <CurrentPlayerIndicator currentPlayer={currentPlayer} players={activePlayers} />}

@@ -23,11 +23,24 @@ function GameOver({ player, gameSettings }) {
         return playerId === player.id ? player.nickname : scores[playerId]?.nickname || `Player ${playerId.slice(-1)}`
     }
 
+    // Get player index for display
+    const getPlayerIndex = (playerId) => {
+        if (playerId === player.id) return "You"
+
+        if (mode === "local" && localPlayers) {
+            const index = localPlayers.findIndex((p) => p.id === playerId)
+            return index !== -1 ? `P${index + 1}` : ""
+        }
+
+        return playerId.startsWith("player") ? `P${playerId.slice(-1)}` : ""
+    }
+
     const sortedPlayers = Object.entries(scores)
         .map(([id, score]) => ({
             id,
             score: typeof score === "object" ? score.score || 0 : score || 0,
             nickname: getPlayerName(id),
+            playerIndex: getPlayerIndex(id),
         }))
         .sort((a, b) => b.score - a.score)
 
@@ -86,7 +99,19 @@ function GameOver({ player, gameSettings }) {
                                     <td className="py-3 px-4">
                                         {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
                                     </td>
-                                    <td className="py-3 px-4 font-medium">{p.nickname}</td>
+                                    <td className="py-3 px-4 font-medium">
+                                        {p.nickname}
+                                        {p.playerIndex && p.playerIndex !== "You" && (
+                                            <span className="ml-2 text-xs text-white/50 bg-white/10 px-2 py-0.5 rounded-full">
+                          {p.playerIndex}
+                        </span>
+                                        )}
+                                        {p.playerIndex === "You" && (
+                                            <span className="ml-2 text-xs text-purple-200 bg-purple-500/30 px-2 py-0.5 rounded-full">
+                          {p.playerIndex}
+                        </span>
+                                        )}
+                                    </td>
                                     <td className="py-3 px-4 text-right font-bold">{p.score}</td>
                                 </tr>
                             ))}

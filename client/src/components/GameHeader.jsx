@@ -4,30 +4,43 @@ import { useEffect, useState, useRef } from "react"
 import PropTypes from "prop-types"
 import HeartIcon from "./HeartIcon"
 
-function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
-    const [prevScore, setPrevScore] = useState(playerScore)
+function GameHeader({ gameSettings, isLocalMode, activeGameState, player }) {
+    const [prevScore, setPrevScore] = useState(0)
     const [scoreAnim, setScoreAnim] = useState(false)
-    const [prevLives, setPrevLives] = useState(playerLives)
+    const [prevLives, setPrevLives] = useState(3)
     const [lifeAnim, setLifeAnim] = useState(false)
     const [animatingHeartIndex, setAnimatingHeartIndex] = useState(-1)
     const animationTimeoutRef = useRef(null)
 
+    // Get the current player's ID (in local multiplayer, this is the active player)
+    const currentPlayerId = isLocalMode && activeGameState?.currentTurn ? activeGameState.currentTurn : player.id
+
+    // Get the current player's score and lives
+    const currentPlayerScore = activeGameState?.scores?.[currentPlayerId] || 0
+    const currentPlayerLives = activeGameState?.lives?.[currentPlayerId] || 0
+
+    // Find the current player object to get their name
+    const currentPlayer =
+        isLocalMode && gameSettings.localPlayers
+            ? gameSettings.localPlayers.find((p) => p.id === currentPlayerId) || player
+            : player
+
     // Score animation
     useEffect(() => {
-        if (playerScore > prevScore) {
+        if (currentPlayerScore > prevScore) {
             setScoreAnim(true)
             const timeout = setTimeout(() => setScoreAnim(false), 700)
             return () => clearTimeout(timeout)
         }
-        setPrevScore(playerScore)
-    }, [playerScore, prevScore])
+        setPrevScore(currentPlayerScore)
+    }, [currentPlayerScore, prevScore])
 
     // Health animation
     useEffect(() => {
-        if (playerLives < prevLives) {
+        if (currentPlayerLives < prevLives) {
             setLifeAnim(true)
             // Set the index of the heart that's being lost
-            setAnimatingHeartIndex(playerLives)
+            setAnimatingHeartIndex(currentPlayerLives)
 
             // Clear any existing timeout to prevent conflicts
             if (animationTimeoutRef.current) {
@@ -49,8 +62,22 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
                 }
             }
         }
-        setPrevLives(playerLives)
-    }, [playerLives, prevLives])
+        setPrevLives(currentPlayerLives)
+    }, [currentPlayerLives, prevLives])
+
+    // Reset animations when player changes
+    useEffect(() => {
+        setPrevScore(currentPlayerScore)
+        setPrevLives(currentPlayerLives)
+        setScoreAnim(false)
+        setLifeAnim(false)
+        setAnimatingHeartIndex(-1)
+
+        if (animationTimeoutRef.current) {
+            clearTimeout(animationTimeoutRef.current)
+            animationTimeoutRef.current = null
+        }
+    }, [currentPlayerId, currentPlayerScore, currentPlayerLives])
 
     return (
         <div className="bg-black/20 backdrop-blur-sm rounded-lg p-3 mb-4 flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -59,13 +86,18 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
                 {!isLocalMode && (
                     <div className="px-3 py-1 bg-indigo-500/30 rounded-full text-sm font-medium">Room: {gameSettings.roomId}</div>
                 )}
+                {isLocalMode && (
+                    <div className="px-3 py-1 bg-indigo-500/30 rounded-full text-sm font-medium">
+                        Current Player: {currentPlayer.nickname || currentPlayer.name}
+                    </div>
+                )}
             </div>
             <div className="flex items-center gap-6">
                 <div className={`text-lg font-bold transition-all duration-300 ${scoreAnim ? "scale-125 text-green-400" : ""}`}>
-                    Score: {playerScore}
+                    Score: {currentPlayerScore}
                 </div>
                 <div className="flex">
-                    {Array.from({ length: playerLives }).map((_, i) => (
+                    {Array.from({ length: currentPlayerLives }).map((_, i) => (
                         <HeartIcon key={i} isAnimating={i === animatingHeartIndex} />
                     ))}
                     {lifeAnim && <HeartIcon key="lost-heart" isAnimating={true} />}
@@ -78,8 +110,8 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
 GameHeader.propTypes = {
     gameSettings: PropTypes.object.isRequired,
     isLocalMode: PropTypes.bool.isRequired,
-    playerScore: PropTypes.number,
-    playerLives: PropTypes.number,
+    activeGameState: PropTypes.object,
+    player: PropTypes.object.isRequired,
 }
 
 export default GameHeader
