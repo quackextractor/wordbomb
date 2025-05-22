@@ -1,5 +1,4 @@
 import React, {useEffect, useRef, useState} from 'react';
-import '../assets/css/AvatarCanvas.css';
 
 /**
  * Canvas component for drawing player avatars
@@ -166,12 +165,12 @@ function AvatarCanvas({color = '#4287f5', onAvatarCreated}) {
     };
 
     return (
-        <div className="avatar-canvas-container">
+        <div className="flex flex-col items-center gap-4 mb-2.5 mt-2.5">
             <canvas
                 ref={canvasRef}
                 width={150}
                 height={150}
-                className="avatar-canvas"
+                className="border-2 border-gray-200 rounded-full cursor-crosshair bg-white shadow-md mb-2"
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -181,7 +180,7 @@ function AvatarCanvas({color = '#4287f5', onAvatarCreated}) {
                 onTouchEnd={handleTouchEnd}
             />
             <button
-                className="clear-canvas-btn"
+                className="bg-blue-50 text-blue-400 px-4 py-2 rounded-md text-sm transition-colors mt-1 hover:bg-blue-100"
                 onClick={handleClear}
             >
                 Clear

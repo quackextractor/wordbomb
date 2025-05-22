@@ -2,7 +2,6 @@ import React, {useEffect, useState, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import WordInput from './WordInput';
 import useGameSocket from '../hooks/useGameSocket';
-import '../assets/css/GameBoard.css';
 import GameHeader from './GameHeader';
 import WordpieceDisplay from './WordpieceDisplay';
 import PlayersList from './PlayersList';
