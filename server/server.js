@@ -23,17 +23,17 @@ app.use((req, res, next) => {
 
 // Apply CORS to all HTTP requests (including engine.io polling)
 app.use(
-    cors({
-      origin: [
-        "http://localhost:2139",
-        "http://127.0.0.1:2139",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
-      ],
-      methods: ["GET", "POST"],
-      credentials: true,
-    }),
+  cors({
+    origin: [
+      "http://localhost:2139",
+      "http://127.0.0.1:2139",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  }),
 )
 
 // Simple health check

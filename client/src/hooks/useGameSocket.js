@@ -3,12 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 
-/**
- * Custom hook for managing Socket.IO connection and game events
- * @param {Object} player - Player information (id, nickname, avatar)
- * @param {Object} gameSettings - Game settings (roomId, mode, isHost)
- * @returns {Object} Socket connection and game state management functions
- */
 const useGameSocket = (player, gameSettings) => {
   const socketRef = useRef(null)
   const [connected, setConnected] = useState(false)
@@ -28,11 +22,70 @@ const useGameSocket = (player, gameSettings) => {
   const [isJoining, setIsJoining] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [eliminatedPlayers, setEliminatedPlayers] = useState([])
+
+  // Timer management refs
   const timerIntervalRef = useRef(null)
+  const timerStartTimeRef = useRef(null)
+  const timerDurationRef = useRef(0)
+
+  // Connection state refs
   const reconnectingRef = useRef(false)
   const stateUpdateIntervalRef = useRef(null)
+  const lastStateUpdateRef = useRef(0)
 
   const isOnlineGameMode = gameSettings?.mode === "online" || gameSettings?.mode === "wordmaster"
+
+  // Improved timer management with ref-based approach
+  const startClientTimer = useCallback((initialTime) => {
+    console.log(`Starting client timer with ${initialTime} seconds`)
+
+    // Clear any existing timer
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    // Store timer metadata
+    timerStartTimeRef.current = Date.now()
+    timerDurationRef.current = initialTime
+
+    // Set initial timer state
+    setTimer(initialTime)
+
+    // Use ref-based timer to avoid closure issues
+    timerIntervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerStartTimeRef.current) / 1000)
+      const remaining = Math.max(0, timerDurationRef.current - elapsed)
+
+      setTimer(remaining)
+
+      if (remaining <= 0) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+        console.log("Client timer expired")
+      }
+    }, 100) // Update more frequently for smoother countdown
+
+    // Cleanup after expected duration + buffer
+    setTimeout(
+      () => {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current)
+          timerIntervalRef.current = null
+        }
+      },
+      (initialTime + 2) * 1000,
+    )
+  }, [])
+
+  const stopClientTimer = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+    timerStartTimeRef.current = null
+    timerDurationRef.current = 0
+  }, [])
 
   // Initialize socket connection once
   useEffect(() => {
@@ -72,6 +125,7 @@ const useGameSocket = (player, gameSettings) => {
       socketRef.current.on("disconnect", (reason) => {
         console.log("Socket disconnected:", reason)
         setConnected(false)
+        stopClientTimer()
         if (reason === "io server disconnect") {
           socketRef.current.connect()
         }
@@ -89,73 +143,104 @@ const useGameSocket = (player, gameSettings) => {
         socketRef.current.disconnect()
         socketRef.current = null
       }
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current)
-      }
+      stopClientTimer()
       if (stateUpdateIntervalRef.current) {
         clearInterval(stateUpdateIntervalRef.current)
       }
     }
-  }, [isOnlineGameMode])
+  }, [isOnlineGameMode, stopClientTimer])
+
+  // Improved state update batching
+  const updateGameState = useCallback(
+    (updates) => {
+      const timestamp = Date.now()
+      lastStateUpdateRef.current = timestamp
+
+      // Batch state updates to prevent race conditions
+      if (updates.wordpiece !== undefined) setCurrentWordpiece(updates.wordpiece)
+      if (updates.timer !== undefined) {
+        setTimer(updates.timer)
+        if (updates.startTimer) {
+          startClientTimer(updates.timer)
+        }
+      }
+      if (updates.scores !== undefined) setScores(updates.scores)
+      if (updates.lives !== undefined) setLives(updates.lives)
+      if (updates.powerUps !== undefined) setPowerUps(updates.powerUps)
+      if (updates.turnOrder !== undefined) setTurnOrder(updates.turnOrder)
+      if (updates.currentTurn !== undefined) setCurrentTurn(updates.currentTurn)
+      if (updates.eliminatedPlayers !== undefined) setEliminatedPlayers(updates.eliminatedPlayers)
+      if (updates.gameStatus !== undefined) setGameStatus(updates.gameStatus)
+
+      console.log("Game state updated:", updates)
+    },
+    [startClientTimer],
+  )
 
   // Check if player can reconnect to an ongoing game
   const checkReconnection = useCallback(
-      (roomId, playerId) => {
-        if (!socketRef.current || !connected) return
+    (roomId, playerId) => {
+      if (!socketRef.current || !connected || reconnectingRef.current) return
 
-        console.log(`Checking if player ${playerId} can reconnect to room ${roomId}`)
-        reconnectingRef.current = true
+      console.log(`Checking if player ${playerId} can reconnect to room ${roomId}`)
+      reconnectingRef.current = true
 
-        socketRef.current.emit("room:check_reconnect", { roomId, playerId }, (response) => {
-          if (response.canReconnect) {
-            console.log("Player can reconnect to ongoing game:", response)
-            // We'll handle the actual reconnection in the join room logic
-            joinRoom(roomId, true)
-          } else {
-            console.log("Player cannot reconnect:", response.error || "No ongoing game")
-            reconnectingRef.current = false
-          }
-        })
-      },
-      [connected],
+      socketRef.current.emit("room:check_reconnect", { roomId, playerId }, (response) => {
+        if (response.canReconnect) {
+          console.log("Player can reconnect to ongoing game:", response)
+          joinRoom(roomId, true)
+            .then(() => {
+              console.log("Reconnection successful")
+            })
+            .catch((err) => {
+              console.error("Reconnection failed:", err)
+              reconnectingRef.current = false
+            })
+        } else {
+          console.log("Player cannot reconnect:", response.error || "No ongoing game")
+          reconnectingRef.current = false
+        }
+      })
+    },
+    [connected],
   )
 
   // Join room when ready
   useEffect(() => {
     if (
-        connected &&
-        gameSettings.roomId &&
-        player.nickname &&
-        !isJoining &&
-        !reconnectingRef.current &&
-        isOnlineGameMode
+      connected &&
+      gameSettings.roomId &&
+      player.nickname &&
+      !isJoining &&
+      !reconnectingRef.current &&
+      isOnlineGameMode
     ) {
       console.log("Attempting to join room:", gameSettings.roomId)
       setIsJoining(true)
       joinRoom(gameSettings.roomId)
-          .then(() => {
-            console.log("Successfully joined room")
+        .then(() => {
+          console.log("Successfully joined room")
 
-            // Set up periodic state update requests
-            if (stateUpdateIntervalRef.current) {
-              clearInterval(stateUpdateIntervalRef.current)
+          // Set up periodic state update requests
+          if (stateUpdateIntervalRef.current) {
+            clearInterval(stateUpdateIntervalRef.current)
+          }
+
+          stateUpdateIntervalRef.current = setInterval(() => {
+            if (socketRef.current && gameSettings.roomId && gameStatus === "playing") {
+              socketRef.current.emit("game:request_state", { roomId: gameSettings.roomId })
             }
-
-            stateUpdateIntervalRef.current = setInterval(() => {
-              if (socketRef.current && gameSettings.roomId && gameStatus === "playing") {
-                socketRef.current.emit("game:request_state", { roomId: gameSettings.roomId })
-              }
-            }, 5000) // Request state update every 5 seconds
-          })
-          .catch((err) => {
-            console.error("Failed to join room:", err)
-            setError(err.message)
-          })
-          .finally(() => setIsJoining(false))
+          }, 3000) // Request state update every 3 seconds
+        })
+        .catch((err) => {
+          console.error("Failed to join room:", err)
+          setError(err.message)
+        })
+        .finally(() => setIsJoining(false))
     }
-  }, [connected, gameSettings.roomId, player.nickname, isOnlineGameMode])
+  }, [connected, gameSettings.roomId, player.nickname, isOnlineGameMode, gameStatus])
 
-  // Setup game event listeners
+  // Setup game event listeners with improved error handling
   useEffect(() => {
     const socket = socketRef.current
     if (!socket) return
@@ -170,90 +255,83 @@ const useGameSocket = (player, gameSettings) => {
           setEliminatedPlayers(data.eliminatedPlayers)
         }
       },
+
       "game:countdown": (data) => {
         console.log("Game countdown received:", data)
         setCountdown(data.countdown)
       },
+
       "game:start": (data) => {
         console.log("Game start received:", data)
-        setGameStatus("playing")
-        setCurrentWordpiece(data.wordpiece)
-        setTimer(data.timer)
-        setScores(data.scores || {})
-        setLives(data.lives || {})
-        setPowerUps(data.powerUps || {})
-        setTurnOrder(data.turnOrder || [])
-        setCurrentTurn(data.currentTurn)
-        if (data.eliminatedPlayers) {
-          setEliminatedPlayers(data.eliminatedPlayers)
-        }
-        setCountdown(null) // Clear countdown when game starts
-
-        // Start client-side timer
-        startClientTimer(data.timer)
+        updateGameState({
+          gameStatus: "playing",
+          wordpiece: data.wordpiece,
+          timer: data.timer,
+          scores: data.scores || {},
+          lives: data.lives || {},
+          powerUps: data.powerUps || {},
+          turnOrder: data.turnOrder || [],
+          currentTurn: data.currentTurn,
+          eliminatedPlayers: data.eliminatedPlayers || [],
+          startTimer: true,
+        })
+        setCountdown(null)
       },
+
       "game:reconnect": (data) => {
         console.log("Game reconnect state received:", data)
-        setGameStatus("playing")
-        setCurrentWordpiece(data.wordpiece)
-        setTimer(data.timer)
-        setScores(data.scores || {})
-        setLives(data.lives || {})
-        setPowerUps(data.powerUps || {})
-        setTurnOrder(data.turnOrder || [])
-        setCurrentTurn(data.currentTurn)
-        if (data.eliminatedPlayers) {
-          setEliminatedPlayers(data.eliminatedPlayers)
-        }
+        updateGameState({
+          gameStatus: "playing",
+          wordpiece: data.wordpiece,
+          timer: data.timer,
+          scores: data.scores || {},
+          lives: data.lives || {},
+          powerUps: data.powerUps || {},
+          turnOrder: data.turnOrder || [],
+          currentTurn: data.currentTurn,
+          eliminatedPlayers: data.eliminatedPlayers || [],
+          startTimer: true,
+        })
 
-        // Start client-side timer
-        startClientTimer(data.timer)
-
-        reconnectingRef.current = false
+        // Mark reconnection as complete
+        setTimeout(() => {
+          reconnectingRef.current = false
+        }, 1000)
       },
+
       "game:state_update": (data) => {
         console.log("Game state update received:", data)
-        // Only update if we're in playing state
         if (gameStatus === "playing") {
-          setCurrentWordpiece(data.wordpiece)
-          setTimer(data.timer)
-          setScores(data.scores || {})
-          setLives(data.lives || {})
-          setPowerUps(data.powerUps || {})
-          setTurnOrder(data.turnOrder || [])
-          setCurrentTurn(data.currentTurn)
-          if (data.eliminatedPlayers) {
-            setEliminatedPlayers(data.eliminatedPlayers)
-          }
+          updateGameState({
+            wordpiece: data.wordpiece,
+            scores: data.scores || {},
+            lives: data.lives || {},
+            powerUps: data.powerUps || {},
+            turnOrder: data.turnOrder || [],
+            currentTurn: data.currentTurn,
+            eliminatedPlayers: data.eliminatedPlayers || [],
+          })
         }
       },
+
       "game:new_wordpiece": (data) => {
         console.log("New wordpiece received:", data)
-        setCurrentWordpiece(data.wordpiece)
-        setTimer(data.timer)
-        setCurrentTurn(data.currentTurn)
-
-        // Update lives if provided
-        if (data.lives) {
-          setLives(data.lives)
-        }
-
-        // Update eliminated players if provided
-        if (data.eliminatedPlayers) {
-          setEliminatedPlayers(data.eliminatedPlayers)
-        }
-
-        // Reset and start client-side timer
-        startClientTimer(data.timer)
+        updateGameState({
+          wordpiece: data.wordpiece,
+          timer: data.timer,
+          currentTurn: data.currentTurn,
+          lives: data.lives,
+          eliminatedPlayers: data.eliminatedPlayers,
+          startTimer: true,
+        })
       },
-      "game:timer": (newTimer) => {
-        setTimer(newTimer)
-      },
+
       "game:submission_result": (res) => {
         console.log("Submission result received:", res)
-        setScores(res.scores)
+        updateGameState({
+          scores: res.scores,
+        })
 
-        // Add the word and definition to the definitions list
         if (res.definition) {
           setDefinition({
             word: res.word,
@@ -261,59 +339,50 @@ const useGameSocket = (player, gameSettings) => {
           })
         }
       },
+
       "game:turn_update": ({ currentTurn, turnOrder, lives, eliminatedPlayers }) => {
         console.log("Turn update received:", currentTurn, turnOrder)
-        setCurrentTurn(currentTurn)
-        setTurnOrder(turnOrder)
-
-        // Update lives if provided
-        if (lives) {
-          setLives(lives)
-        }
-
-        // Update eliminated players if provided
-        if (eliminatedPlayers) {
-          setEliminatedPlayers(eliminatedPlayers)
-        }
+        updateGameState({
+          currentTurn,
+          turnOrder,
+          lives,
+          eliminatedPlayers,
+        })
       },
+
       "game:power_up_used": (data) => {
         console.log("Power-up used:", data)
-        setPowerUps(data.powerUps)
-        if (data.type === "reverse_turn") setTurnOrder(data.turnOrder)
-
-        // Update lives if provided
-        if (data.lives) {
-          setLives(data.lives)
-        }
-
-        // Update eliminated players if provided
-        if (data.eliminatedPlayers) {
-          setEliminatedPlayers(data.eliminatedPlayers)
-        }
+        updateGameState({
+          powerUps: data.powerUps,
+          turnOrder: data.type === "reverse_turn" ? data.turnOrder : undefined,
+          lives: data.lives,
+          eliminatedPlayers: data.eliminatedPlayers,
+        })
       },
+
       "game:player_update": ({ scores, lives, eliminatedPlayers }) => {
         console.log("Player update received:", scores, lives)
-        if (scores) setScores(scores)
-        if (lives) setLives(lives)
-        if (eliminatedPlayers) setEliminatedPlayers(eliminatedPlayers)
+        updateGameState({
+          scores,
+          lives,
+          eliminatedPlayers,
+        })
       },
+
       "game:over": (res) => {
         console.log("Game over received:", res)
-        setGameStatus("over")
-        setScores(res.finalScores)
+        stopClientTimer()
+        updateGameState({
+          gameStatus: "over",
+          scores: res.finalScores,
+        })
 
-        // Clear timer
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current)
-          timerIntervalRef.current = null
-        }
-
-        // Clear state update interval
         if (stateUpdateIntervalRef.current) {
           clearInterval(stateUpdateIntervalRef.current)
           stateUpdateIntervalRef.current = null
         }
       },
+
       "game:definition": (data) => {
         console.log("Definition received:", data)
         setDefinition(data)
@@ -325,139 +394,107 @@ const useGameSocket = (player, gameSettings) => {
     return () => {
       Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn))
       socket.off("error")
-
-      // Clear timer
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current)
-        timerIntervalRef.current = null
-      }
-
-      // Clear state update interval
-      if (stateUpdateIntervalRef.current) {
-        clearInterval(stateUpdateIntervalRef.current)
-        stateUpdateIntervalRef.current = null
-      }
     }
-  }, [gameStatus])
-
-  // Function to start client-side timer
-  const startClientTimer = useCallback((initialTime) => {
-    // Clear any existing timer
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current)
-    }
-
-    // Set initial time
-    setTimer(initialTime)
-
-    // Start countdown
-    let timeLeft = initialTime
-    timerIntervalRef.current = setInterval(() => {
-      timeLeft--
-      setTimer(timeLeft)
-
-      if (timeLeft <= 0) {
-        clearInterval(timerIntervalRef.current)
-        timerIntervalRef.current = null
-      }
-    }, 1000)
-  }, [])
+  }, [updateGameState, stopClientTimer, gameStatus])
 
   const createRoom = useCallback(
-      async (mode) => {
-        if (!socketRef.current || !connected) {
-          throw new Error("Not connected to server")
+    async (mode) => {
+      if (!socketRef.current || !connected) {
+        throw new Error("Not connected to server")
+      }
+
+      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
+      console.log("Creating room:", roomId)
+
+      socketRef.current.emit("room:join", {
+        roomId,
+        playerId: player.id,
+        playerName: player.nickname,
+        playerAvatar: player.avatar,
+        playerColor: player.color,
+        isHost: true,
+      })
+      return roomId
+    },
+    [player, connected],
+  )
+
+  const joinRoom = useCallback(
+    (roomId, isReconnecting = false) => {
+      return new Promise((resolve, reject) => {
+        const socket = socketRef.current
+
+        if (!socket || !connected) {
+          reject(new Error("Not connected to server"))
+          return
         }
 
-        const roomId = Math.random().toString(36).substring(2, 8).toUpperCase()
-        console.log("Creating room:", roomId)
+        const cleanup = () => {
+          clearTimeout(timeoutId)
+          socket.off("room:update", onRoomUpdate)
+          socket.off("game:reconnect", onGameReconnect)
+          socket.off("error", onError)
+        }
 
-        socketRef.current.emit("room:join", {
+        const onRoomUpdate = (data) => {
+          cleanup()
+          if (!isReconnecting) {
+            reconnectingRef.current = false
+          }
+          resolve(data)
+        }
+
+        const onGameReconnect = (data) => {
+          cleanup()
+          resolve(data)
+        }
+
+        const onError = (errMsg) => {
+          cleanup()
+          reconnectingRef.current = false
+          reject(new Error(errMsg))
+        }
+
+        socket.once("room:update", onRoomUpdate)
+        socket.once("game:reconnect", onGameReconnect)
+        socket.once("error", onError)
+
+        socket.emit("room:join", {
           roomId,
           playerId: player.id,
           playerName: player.nickname,
           playerAvatar: player.avatar,
           playerColor: player.color,
-          isHost: true,
+          isHost: gameSettings.isHost,
         })
-        return roomId
-      },
-      [player, connected],
-  )
 
-  const joinRoom = useCallback(
-      (roomId, isReconnecting = false) => {
-        return new Promise((resolve, reject) => {
-          const socket = socketRef.current
-
-          if (!socket || !connected) {
-            reject(new Error("Not connected to server"))
-            return
-          }
-
-          const cleanup = () => {
-            clearTimeout(timeoutId)
-            socket.off("room:update", onRoomUpdate)
-            socket.off("game:reconnect", onGameReconnect)
-            socket.off("error", onError)
-          }
-
-          const onRoomUpdate = (data) => {
-            cleanup()
-            resolve(data)
-          }
-
-          const onGameReconnect = (data) => {
-            cleanup()
-            resolve(data)
-          }
-
-          const onError = (errMsg) => {
-            cleanup()
-            reject(new Error(errMsg))
-          }
-
-          socket.once("room:update", onRoomUpdate)
-          socket.once("game:reconnect", onGameReconnect)
-          socket.once("error", onError)
-
-          socket.emit("room:join", {
-            roomId,
-            playerId: player.id,
-            playerName: player.nickname,
-            playerAvatar: player.avatar,
-            playerColor: player.color,
-            isHost: gameSettings.isHost,
-          })
-
-          const timeoutId = setTimeout(() => {
-            cleanup()
-            reject(new Error("Timeout joining room"))
-          }, 10000)
-        })
-      },
-      [player, gameSettings.isHost, connected],
+        const timeoutId = setTimeout(() => {
+          cleanup()
+          reconnectingRef.current = false
+          reject(new Error("Timeout joining room"))
+        }, 10000)
+      })
+    },
+    [player, gameSettings.isHost, connected],
   )
 
   const startGameWithCountdown = useCallback(
-      (countdownSeconds = 3) => {
-        if (gameSettings.roomId && socketRef.current) {
-          console.log(`Starting game countdown in room ${gameSettings.roomId}: ${countdownSeconds} seconds`)
-          socketRef.current.emit("game:start_countdown", {
-            roomId: gameSettings.roomId,
-            countdown: countdownSeconds,
-          })
+    (countdownSeconds = 3) => {
+      if (gameSettings.roomId && socketRef.current) {
+        console.log(`Starting game countdown in room ${gameSettings.roomId}: ${countdownSeconds} seconds`)
+        socketRef.current.emit("game:start_countdown", {
+          roomId: gameSettings.roomId,
+          countdown: countdownSeconds,
+        })
 
-          // Start local countdown
-          setCountdown(countdownSeconds)
+        setCountdown(countdownSeconds)
 
-          // After countdown, start the game
-          setTimeout(() => {
-            startGame()
-          }, countdownSeconds * 1000)
-        }
-      },
-      [gameSettings.roomId],
+        setTimeout(() => {
+          startGame()
+        }, countdownSeconds * 1000)
+      }
+    },
+    [gameSettings.roomId],
   )
 
   const startGame = useCallback(() => {
@@ -468,43 +505,43 @@ const useGameSocket = (player, gameSettings) => {
   }, [gameSettings])
 
   const submitWord = useCallback(
-      (word) => {
-        if (socketRef.current) {
-          console.log("Submitting word:", word, "Room:", gameSettings.roomId, "Player:", player.id)
-          socketRef.current.emit("game:submit", {
-            roomId: gameSettings.roomId,
-            playerId: player.id,
-            word,
-            wordpiece: currentWordpiece,
-          })
-        }
-      },
-      [gameSettings.roomId, player.id, currentWordpiece],
+    (word) => {
+      if (socketRef.current) {
+        console.log("Submitting word:", word, "Room:", gameSettings.roomId, "Player:", player.id)
+        socketRef.current.emit("game:submit", {
+          roomId: gameSettings.roomId,
+          playerId: player.id,
+          word,
+          wordpiece: currentWordpiece,
+        })
+      }
+    },
+    [gameSettings.roomId, player.id, currentWordpiece],
   )
 
   const usePowerUp = useCallback(
-      (type, targetId) => {
-        if (socketRef.current) {
-          console.log("Using power-up:", type, "Target:", targetId)
-          socketRef.current.emit("game:use_power_up", {
-            roomId: gameSettings.roomId,
-            playerId: player.id,
-            powerUpType: type,
-            targetPlayerId: targetId,
-          })
-        }
-      },
-      [gameSettings.roomId, player.id],
+    (type, targetId) => {
+      if (socketRef.current) {
+        console.log("Using power-up:", type, "Target:", targetId)
+        socketRef.current.emit("game:use_power_up", {
+          roomId: gameSettings.roomId,
+          playerId: player.id,
+          powerUpType: type,
+          targetPlayerId: targetId,
+        })
+      }
+    },
+    [gameSettings.roomId, player.id],
   )
 
   const requestDefinition = useCallback(
-      (word) => {
-        if (socketRef.current) {
-          console.log("Requesting definition for:", word)
-          socketRef.current.emit("game:request_definition", { roomId: gameSettings.roomId, word })
-        }
-      },
-      [gameSettings.roomId],
+    (word) => {
+      if (socketRef.current) {
+        console.log("Requesting definition for:", word)
+        socketRef.current.emit("game:request_definition", { roomId: gameSettings.roomId, word })
+      }
+    },
+    [gameSettings.roomId],
   )
 
   const leaveRoom = useCallback(() => {
@@ -513,18 +550,13 @@ const useGameSocket = (player, gameSettings) => {
       socketRef.current.emit("room:leave", { roomId: gameSettings.roomId, playerId: player.id })
     }
 
-    // Clear timer
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current)
-      timerIntervalRef.current = null
-    }
+    stopClientTimer()
 
-    // Clear state update interval
     if (stateUpdateIntervalRef.current) {
       clearInterval(stateUpdateIntervalRef.current)
       stateUpdateIntervalRef.current = null
     }
-  }, [gameSettings.roomId, player.id])
+  }, [gameSettings.roomId, player.id, stopClientTimer])
 
   return {
     connected,
