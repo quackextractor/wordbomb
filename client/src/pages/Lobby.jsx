@@ -129,7 +129,7 @@ function Lobby({ player, setPlayer }) {
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             <div className="card max-w-md w-full p-6 md:p-8 animate-bounce-in">
-                <h1 className="text-center text-3xl md:text-4xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
+                <h1 className="text-center text-3xl md:text-4xl font-bold mb-8 pb-1 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">
                     WordBomb Kingfish
                 </h1>
 

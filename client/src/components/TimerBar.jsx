@@ -1,7 +1,7 @@
 import PropTypes from "prop-types"
 
 function TimerBar({ maxTime, timeLeft }) {
-    let percent = timeLeft <= 1 ? 0 : (timeLeft / maxTime) * 100
+    let percent = timeLeft <= 0 ? 0 : (timeLeft / maxTime) * 100
     percent = Math.max(0, Math.min(100, percent))
 
     // Determine color based on time remaining

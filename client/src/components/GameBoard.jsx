@@ -55,6 +55,15 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         leaveRoom,
     } = useGameSocket(player, gameSettings)
 
+    const handleUsePowerUp = (type, targetId) => {
+        const otherPlayer = players.find((p) => p.id !== player.id)
+        if (otherPlayer) {
+            usePowerUp(type, otherPlayer.id)
+        } else {
+            usePowerUp(type)
+        }
+    }
+
     useEffect(() => {
         if (gameSettings.mode === "single" || gameSettings.mode === "local") {
             initializeLocalGame()
@@ -188,50 +197,43 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         })
     }
 
-    const handleUsePowerUp = (type, targetId) => {
-        const otherPlayer = players.find((p) => p.id !== player.id)
-        if (otherPlayer) {
-            usePowerUp(type, otherPlayer.id)
-        } else {
-            usePowerUp(type)
-        }
-    }
-
     return (
         <div className="game-container py-4">
-            <TimerBar
-                maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
-                timeLeft={Math.max(0, activeGameState?.timer || 0)}
-            />
-
-            <GameHeader
-                gameSettings={gameSettings}
-                isLocalMode={isLocalMode}
-                activeGameState={activeGameState}
-                playerScore={playerScore}
-                playerLives={playerLives}
-            />
-
-            <div className="card p-6 mb-4">
-                <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
-                <WordInput
-                    ref={wordInputRef}
-                    onSubmit={handleSubmitWord}
-                    disabled={gameSettings.mode !== "single" && !isPlayerTurn}
-                    wordpiece={activeGameState?.currentWordpiece}
+            <div className="max-w-5xl mx-auto">
+                <TimerBar
+                    maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
+                    timeLeft={Math.max(0, activeGameState?.timer || 0)}
                 />
+
+                <GameHeader
+                    gameSettings={gameSettings}
+                    isLocalMode={isLocalMode}
+                    activeGameState={activeGameState}
+                    playerScore={playerScore}
+                    playerLives={playerLives}
+                />
+
+                <div className="card p-6 mb-4">
+                    <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
+                    <WordInput
+                        ref={wordInputRef}
+                        onSubmit={handleSubmitWord}
+                        disabled={gameSettings.mode !== "single" && !isPlayerTurn}
+                        wordpiece={activeGameState?.currentWordpiece}
+                    />
+                </div>
+
+                <WordDefinitionsPanel wordDefinitions={wordDefinitions} />
+                <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
+
+                {Object.keys(playerPowerUps).length > 0 && (
+                    <PowerUpsPanel
+                        playerPowerUps={playerPowerUps}
+                        handleUsePowerUp={handleUsePowerUp}
+                        isPlayerTurn={isPlayerTurn}
+                    />
+                )}
             </div>
-
-            <WordDefinitionsPanel wordDefinitions={wordDefinitions} />
-            <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
-
-            {Object.keys(playerPowerUps).length > 0 && (
-                <PowerUpsPanel
-                    playerPowerUps={playerPowerUps}
-                    handleUsePowerUp={handleUsePowerUp}
-                    isPlayerTurn={isPlayerTurn}
-                />
-            )}
         </div>
     )
 }
