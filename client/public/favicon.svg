@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6e8efb"
-     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-    <path d="M2 17l10 5 10-5"></path>
-    <path d="M2 12l10 5 10-5"></path>
-</svg>
+function WordpieceDisplay({ wordpiece }) {
+    return (
+        <div className="text-center mb-6">
+            <h2 className="text-lg font-medium text-white/70 mb-2">Current Wordpiece:</h2>
+            <div className="text-4xl md:text-5xl pb-1 font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text animate-pulse-custom">
+                {wordpiece}
+            </div>
+        </div>
+    )
+}
+
+export default WordpieceDisplay
