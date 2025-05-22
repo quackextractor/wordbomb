@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 
-const useGameSocket = (player, gameSettings) => {
+const useGameSocket = (player, gameSettings, setWordDefinitions) => {
   const socketRef = useRef(null)
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
@@ -22,6 +22,7 @@ const useGameSocket = (player, gameSettings) => {
   const [isJoining, setIsJoining] = useState(false)
   const [countdown, setCountdown] = useState(null)
   const [eliminatedPlayers, setEliminatedPlayers] = useState([])
+  const [wordDefinitionsList, setWordDefinitionsList] = useState([])
 
   // Timer management refs
   const timerIntervalRef = useRef(null)
@@ -39,42 +40,47 @@ const useGameSocket = (player, gameSettings) => {
   const startClientTimer = useCallback((initialTime) => {
     console.log(`Starting client timer with ${initialTime} seconds`)
 
-    // Clear any existing timer
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current)
-      timerIntervalRef.current = null
-    }
+    // Always stop any existing timer first
+    stopClientTimer()
+
+    // Validate the initial time
+    const validInitialTime = Math.max(1, initialTime || 15)
 
     // Store timer metadata
     timerStartTimeRef.current = Date.now()
-    timerDurationRef.current = initialTime
+    timerDurationRef.current = validInitialTime
 
     // Set initial timer state
-    setTimer(initialTime)
+    setTimer(validInitialTime)
 
     // Use ref-based timer to avoid closure issues
     timerIntervalRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - timerStartTimeRef.current) / 1000)
       const remaining = Math.max(0, timerDurationRef.current - elapsed)
 
+      // Update the timer state
       setTimer(remaining)
 
+      // Log timer updates for debugging
+      if (remaining % 5 === 0 || remaining <= 3) {
+        console.log(`Timer update: ${remaining}s remaining`)
+      }
+
       if (remaining <= 0) {
-        clearInterval(timerIntervalRef.current)
-        timerIntervalRef.current = null
         console.log("Client timer expired")
+        stopClientTimer()
       }
     }, 100) // Update more frequently for smoother countdown
 
-    // Cleanup after expected duration + buffer
+    // Safety cleanup after expected duration + buffer
     setTimeout(
       () => {
         if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current)
-          timerIntervalRef.current = null
+          console.log("Safety cleanup of timer")
+          stopClientTimer()
         }
       },
-      (initialTime + 2) * 1000,
+      (validInitialTime + 2) * 1000,
     )
   }, [])
 
@@ -82,6 +88,7 @@ const useGameSocket = (player, gameSettings) => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current)
       timerIntervalRef.current = null
+      console.log("Client timer stopped")
     }
     timerStartTimeRef.current = null
     timerDurationRef.current = 0
@@ -316,14 +323,21 @@ const useGameSocket = (player, gameSettings) => {
 
       "game:new_wordpiece": (data) => {
         console.log("New wordpiece received:", data)
+
+        // Stop any existing timer first
+        stopClientTimer()
+
+        // Update state with new data
         updateGameState({
           wordpiece: data.wordpiece,
           timer: data.timer,
           currentTurn: data.currentTurn,
           lives: data.lives,
           eliminatedPlayers: data.eliminatedPlayers,
-          startTimer: true,
         })
+
+        // Start a fresh timer with the full time
+        startClientTimer(data.timer)
       },
 
       "game:submission_result": (res) => {
@@ -332,10 +346,21 @@ const useGameSocket = (player, gameSettings) => {
           scores: res.scores,
         })
 
-        if (res.definition) {
-          setDefinition({
-            word: res.word,
-            definition: res.definition,
+        // Add the word and definition to the definitions list
+        if (res.definition && setWordDefinitions) {
+          setDefinition(res.definition)
+
+          // Update word definitions list with the server-provided definition
+          setWordDefinitionsList((prev) => {
+            const newDefs = [
+              {
+                word: res.word,
+                definitions: res.definition.definitions || [],
+              },
+              ...prev.filter((wd) => wd.word !== res.word),
+            ].slice(0, 4)
+
+            return newDefs
           })
         }
       },
@@ -371,16 +396,36 @@ const useGameSocket = (player, gameSettings) => {
 
       "game:over": (res) => {
         console.log("Game over received:", res)
+
+        // Stop timer immediately
         stopClientTimer()
+
+        // Force game status to "over" immediately
+        setGameStatus("over")
+
+        // Update all relevant state
         updateGameState({
           gameStatus: "over",
-          scores: res.finalScores,
+          scores: res.finalScores || res.scores || scores,
+          timer: 0,
         })
 
+        // Clear all intervals
         if (stateUpdateIntervalRef.current) {
           clearInterval(stateUpdateIntervalRef.current)
           stateUpdateIntervalRef.current = null
         }
+
+        // Log for debugging
+        console.log("Game over state set, scores:", res.finalScores || res.scores || scores)
+
+        // Force a small delay before navigation to ensure state is updated
+        setTimeout(() => {
+          if (gameStatus !== "over") {
+            console.log("Forcing game status to 'over'")
+            setGameStatus("over")
+          }
+        }, 200)
       },
 
       "game:definition": (data) => {
@@ -575,6 +620,7 @@ const useGameSocket = (player, gameSettings) => {
     error,
     countdown,
     eliminatedPlayers,
+    wordDefinitionsList,
     createRoom,
     joinRoom,
     startGame,
@@ -584,6 +630,7 @@ const useGameSocket = (player, gameSettings) => {
     requestDefinition,
     leaveRoom,
     socket: socketRef.current,
+    setWordDefinitions: setWordDefinitionsList, // Add this to the return object
   }
 }
 

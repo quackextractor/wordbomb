@@ -1,4 +1,6 @@
 const { generateWordpiece } = require("./wordUtils")
+const fs = require("fs")
+const path = require("path")
 
 class GameRoom {
   constructor(id, wordManager) {
@@ -18,6 +20,28 @@ class GameRoom {
     this.turnTime = 15 // Default turn time in seconds
     this.disconnectedPlayers = new Map() // Track disconnected players by ID
     this.eliminatedPlayers = new Set() // Track eliminated players
+    this.wordList = new Set() // Store loaded words
+    this.loadWords() // Load words on initialization
+  }
+
+  // Load words from file
+  loadWords() {
+    try {
+      const wordsPath = path.join(__dirname, "data", "words.txt")
+      const wordsContent = fs.readFileSync(wordsPath, "utf8")
+      const wordsList = wordsContent
+        .split(/\r?\n/)
+        .map((w) => w.trim().toLowerCase())
+        .filter(Boolean)
+
+      wordsList.forEach((word) => {
+        this.wordList.add(word)
+      })
+
+      console.log(`Loaded ${this.wordList.size} words into game room dictionary`)
+    } catch (error) {
+      console.error("Error loading words into game room:", error)
+    }
   }
 
   getRoomState() {
@@ -260,29 +284,64 @@ class GameRoom {
     }
   }
 
-  submitWord(playerId, word, wordpiece) {
-    if (!this.gameInProgress || this.currentTurn !== playerId) {
-      return { valid: false, error: "Not your turn" }
-    }
-
+  // Enhanced word validation using the same logic as client
+  validateWord(word, wordpiece) {
     const wordLower = word.toLowerCase()
     const wordpieceLower = wordpiece.toLowerCase()
 
-    // Validate word
+    // Check if word contains wordpiece
     if (!wordLower.includes(wordpieceLower)) {
       return { valid: false, error: `Word must contain "${wordpiece}"` }
     }
 
+    // Check if word has been used already
     if (this.usedWords.has(wordLower)) {
       return { valid: false, error: "Word already used" }
     }
 
-    // Check if word is valid (in dictionary)
-    if (!this.wordManager.isValidWord(wordLower)) {
+    // Check if word is in dictionary
+    if (!this.wordList.has(wordLower) && !this.wordManager.isValidWord(wordLower)) {
       return { valid: false, error: "Word not found in dictionary" }
     }
 
-    // Word is valid
+    return { valid: true }
+  }
+
+  // Fetch definition from external API
+  async fetchDefinition(word) {
+    try {
+      const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`)
+      const data = await response.json()
+
+      if (data && data[0] && Array.isArray(data[0].defs) && data[0].defs.length > 0) {
+        return data[0].defs.slice(0, 3).map((def) => def.replace(/^\w+\t/, ""))
+      }
+    } catch (error) {
+      console.error("Error fetching definition:", error)
+    }
+
+    // Fallback to wordManager if API fails
+    const fallbackDef = this.wordManager.getDefinition(word)
+    if (fallbackDef && fallbackDef.definitions) {
+      return fallbackDef.definitions
+    }
+
+    return [`Definition for ${word}`]
+  }
+
+  // Updated submitWord with enhanced validation and definition fetching
+  async submitWord(playerId, word, wordpiece) {
+    if (!this.gameInProgress || this.currentTurn !== playerId) {
+      return { valid: false, error: "Not your turn" }
+    }
+
+    const validation = this.validateWord(word, wordpiece)
+    if (!validation.valid) {
+      return validation
+    }
+
+    // Word is valid - add to used words
+    const wordLower = word.toLowerCase()
     this.usedWords.add(wordLower)
 
     // Calculate score
@@ -296,13 +355,30 @@ class GameRoom {
       this.powerUps[playerId][type]++
     }
 
-    // Get definition
-    const definition = this.wordManager.getDefinition(wordLower)
+    // Fetch definition
+    try {
+      const definitions = await this.fetchDefinition(wordLower)
 
-    return {
-      valid: true,
-      score,
-      definition,
+      return {
+        valid: true,
+        score,
+        definition: {
+          word: wordLower,
+          definitions: definitions || [],
+        },
+      }
+    } catch (error) {
+      console.error("Error getting definition:", error)
+
+      // Return success even if definition fetch fails
+      return {
+        valid: true,
+        score,
+        definition: {
+          word: wordLower,
+          definitions: [],
+        },
+      }
     }
   }
 

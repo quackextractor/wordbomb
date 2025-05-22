@@ -59,7 +59,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     leaveRoom,
     startGameWithCountdown,
     countdown,
-  } = useGameSocket(player, gameSettings)
+  } = useGameSocket(player, gameSettings, setWordDefinitions) // Pass setWordDefinitions
 
   const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
     useLocalGame(player, gameSettings)
@@ -137,20 +137,18 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   const handleUsePowerUp = useCallback(
     (type, targetId) => {
-      if (usePowerUpHook) {
-        if (isLocalMode) {
-          handleLocalUsePowerUp(type, targetId)
+      if (isLocalMode) {
+        handleLocalUsePowerUp(type, targetId)
+      } else {
+        const otherPlayer = players.find((p) => p.id !== player.id)
+        if (otherPlayer) {
+          usePowerUp(type, otherPlayer.id)
         } else {
-          const otherPlayer = players.find((p) => p.id !== player.id)
-          if (otherPlayer) {
-            usePowerUpHook(type, otherPlayer.id)
-          } else {
-            usePowerUpHook(type)
-          }
+          usePowerUp(type)
         }
       }
     },
-    [players, player.id, usePowerUpHook, isLocalMode, handleLocalUsePowerUp],
+    [players, player.id, usePowerUp, isLocalMode, handleLocalUsePowerUp],
   )
 
   useEffect(() => {
@@ -186,66 +184,72 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     }
   }, [isOnlineMode, connected, gameSettings.isHost, gameSettings.roomId, gameSettings.mode, createRoom])
 
-  // Handle game over navigation with improved state validation
+  // Improved game over detection and navigation
   useEffect(() => {
-    const isGameOver = gameStatus === "over" || (localGameState && localGameState.status === "over")
+    // Check for game over state from either local or online game
+    const isGameOver = (isOnlineMode && gameStatus === "over") || (isLocalMode && localGameState?.status === "over")
 
-    if (isGameOver && !showLeaveConfirm && activeGameState) {
-      console.log("Game over detected, navigating to game over screen")
+    if (isGameOver && !showLeaveConfirm) {
+      console.log("Game over detected, preparing to navigate to game over screen")
 
-      const setupPlayers = gameSettings.localPlayers || []
-      const enhancedScores = {}
-      const gameScores = isLocalMode ? localGameState?.scores || {} : scores || {}
+      // Short delay to ensure all state is updated
+      const navigationTimeout = setTimeout(() => {
+        const setupPlayers = gameSettings.localPlayers || []
+        const enhancedScores = {}
+        const gameScores = isLocalMode ? localGameState?.scores || {} : scores || {}
 
-      Object.keys(gameScores).forEach((playerId) => {
-        let playerInfo = activePlayers.find((p) => p.id === playerId)
+        // Prepare enhanced scores with player info
+        Object.keys(gameScores).forEach((playerId) => {
+          let playerInfo = activePlayers.find((p) => p.id === playerId)
 
-        if (!playerInfo && setupPlayers.length > 0) {
-          playerInfo = setupPlayers.find((p) => p.id === playerId)
-        }
-
-        if (!playerInfo) {
-          playerInfo = {
-            id: playerId,
-            nickname: playerId === player.id ? player.nickname : `Player ${playerId.slice(-1)}`,
-            avatar: null,
-            color: "#4287f5",
+          if (!playerInfo && setupPlayers.length > 0) {
+            playerInfo = setupPlayers.find((p) => p.id === playerId)
           }
-        }
 
-        enhancedScores[playerId] = {
-          score: gameScores[playerId] || 0,
-          nickname: playerInfo.nickname || playerInfo.name || `Player ${playerId}`,
-          avatar: playerInfo.avatar,
-          color: playerInfo.color,
-        }
-      })
+          if (!playerInfo) {
+            playerInfo = {
+              id: playerId,
+              nickname: playerId === player.id ? player.nickname : `Player ${playerId.slice(-1)}`,
+              avatar: null,
+              color: "#4287f5",
+            }
+          }
 
-      navigate("/game-over", {
-        state: {
-          scores: enhancedScores,
-          roomId: gameSettings.roomId,
-          mode: gameSettings.mode,
-          localPlayers: activePlayers,
-          setupPlayers: setupPlayers,
-        },
-      })
+          enhancedScores[playerId] = {
+            score: gameScores[playerId] || 0,
+            nickname: playerInfo.nickname || playerInfo.name || `Player ${playerId}`,
+            avatar: playerInfo.avatar,
+            color: playerInfo.color,
+          }
+        })
+
+        console.log("Navigating to game over with scores:", enhancedScores)
+
+        navigate("/game-over", {
+          state: {
+            scores: enhancedScores,
+            roomId: gameSettings.roomId,
+            mode: gameSettings.mode,
+            localPlayers: activePlayers,
+            setupPlayers: setupPlayers,
+          },
+        })
+      }, 500) // Short delay to ensure all state updates are processed
+
+      return () => clearTimeout(navigationTimeout)
     }
   }, [
     gameStatus,
     localGameState?.status,
     showLeaveConfirm,
     navigate,
-    gameSettings.roomId,
-    gameSettings.mode,
-    gameSettings.localPlayers,
+    gameSettings,
     isLocalMode,
+    isOnlineMode,
     scores,
     localGameState?.scores,
-    player.id,
-    player.nickname,
+    player,
     activePlayers,
-    activeGameState,
   ])
 
   // Enhanced damage effects with better state tracking
@@ -318,32 +322,14 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   const playerPowerUps = activeGameState.powerUps?.[player.id] || {}
 
-  async function fetchDefinitions(word) {
-    try {
-      const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`)
-      const data = await response.json()
-      if (data && data[0] && Array.isArray(data[0].defs) && data[0].defs.length > 0) {
-        return data[0].defs.slice(0, 3).map((def) => def.replace(/^\w+\t/, ""))
-      }
-    } catch (e) {
-      console.error("Error fetching definitions:", e)
-    }
-    return []
-  }
-
   const handleSubmitWord = (word) => {
     if (isLocalMode) {
       handleLocalSubmitWord(word)
+      setLastSubmittedWord(word)
     } else {
       submitWord(word)
+      setLastSubmittedWord(word)
     }
-    setLastSubmittedWord(word)
-    fetchDefinitions(word).then((defs) => {
-      setWordDefinitions((prev) => {
-        const newDefs = [{ word, definitions: defs.length ? defs : [] }, ...prev.filter((wd) => wd.word !== word)]
-        return newDefs.slice(0, 4)
-      })
-    })
   }
 
   return (

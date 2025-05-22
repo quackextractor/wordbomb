@@ -185,51 +185,57 @@ io.on("connection", (socket) => {
     }
   })
 
-  // Submit word
-  socket.on("game:submit", ({ roomId, playerId, word, wordpiece }) => {
+  // Submit word - updated to handle async validation
+  socket.on("game:submit", async ({ roomId, playerId, word, wordpiece }) => {
     const room = gameRooms.get(roomId)
     if (room) {
       console.log(`Player ${playerId} submitting word "${word}" in room ${roomId}`)
 
-      const result = room.submitWord(playerId, word, wordpiece)
+      try {
+        // Call the async submitWord method
+        const result = await room.submitWord(playerId, word, wordpiece)
 
-      if (result.valid) {
-        console.log(`Word "${word}" is valid, sending result to all clients`)
+        if (result.valid) {
+          console.log(`Word "${word}" is valid, sending result to all clients`)
 
-        // Send submission result to all clients
-        io.to(roomId).emit("game:submission_result", {
-          playerId,
-          word,
-          scores: room.getScores(),
-          definition: result.definition,
-        })
-
-        // Generate new wordpiece and update turn
-        const newState = room.nextTurn()
-
-        if (newState.gameOver) {
-          // Game is over, send game over event
-          io.to(roomId).emit("game:over", {
-            finalScores: newState.finalScores,
-            winner: newState.winner,
+          // Send submission result to all clients with definition
+          io.to(roomId).emit("game:submission_result", {
+            playerId,
+            word,
+            scores: room.getScores(),
+            definition: result.definition,
           })
-          console.log(`Game over in room ${roomId}, winner: ${newState.winner || "none"}`)
+
+          // Generate new wordpiece and update turn
+          const newState = room.nextTurn()
+
+          if (newState.gameOver) {
+            // Game is over, send game over event
+            io.to(roomId).emit("game:over", {
+              finalScores: newState.finalScores,
+              winner: newState.winner,
+            })
+            console.log(`Game over in room ${roomId}, winner: ${newState.winner || "none"}`)
+          } else {
+            // Send new wordpiece to all clients
+            io.to(roomId).emit("game:new_wordpiece", {
+              wordpiece: newState.wordpiece,
+              timer: newState.timer,
+              currentTurn: newState.currentTurn,
+              lives: newState.lives,
+              eliminatedPlayers: newState.eliminatedPlayers,
+            })
+          }
+
+          console.log(`Player ${playerId} submitted valid word "${word}" in room ${roomId}`)
         } else {
-          // Send new wordpiece to all clients
-          io.to(roomId).emit("game:new_wordpiece", {
-            wordpiece: newState.wordpiece,
-            timer: newState.timer,
-            currentTurn: newState.currentTurn,
-            lives: newState.lives,
-            eliminatedPlayers: newState.eliminatedPlayers,
-          })
+          console.log(`Word "${word}" is invalid: ${result.error}`)
+          // Send error only to the submitting client
+          socket.emit("error", result.error || "Invalid word")
         }
-
-        console.log(`Player ${playerId} submitted valid word "${word}" in room ${roomId}`)
-      } else {
-        console.log(`Word "${word}" is invalid: ${result.error}`)
-        // Send error only to the submitting client
-        socket.emit("error", result.error || "Invalid word")
+      } catch (error) {
+        console.error("Error processing word submission:", error)
+        socket.emit("error", "Server error processing your submission")
       }
     }
   })
