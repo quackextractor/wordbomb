@@ -8,7 +8,6 @@ import GameHeader from "./GameHeader"
 import WordpieceDisplay from "./WordpieceDisplay"
 import PlayersList from "./PlayersList"
 import PowerUpsPanel from "./PowerUpsPanel"
-import GameWaiting from "./GameWaiting"
 import GameLoading from "./GameLoading"
 import useLocalGame from "../hooks/useLocalGame"
 import WordDefinitionsPanel from "./WordDefinitionsPanel"
@@ -34,10 +33,21 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
   const [lastSubmittedWord, setLastSubmittedWord] = useState("")
   const [wordDefinitions, setWordDefinitions] = useState([]) // [{word, definitions: []}]
   const prevLivesRef = useRef({})
+  const [usePowerUpHook, setUsePowerUpHook] = useState(null)
+
+  // Determine game mode
+  const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
+  const isOnlineMode = gameSettings.mode === "online" || gameSettings.mode === "wordmaster"
+
+  console.log("GameBoard - Game mode:", gameSettings.mode, "isLocalMode:", isLocalMode, "isOnlineMode:", isOnlineMode)
+
+  // Initialize hooks based on mode
   const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
-    useLocalGame(player, gameSettings)
+    useLocalGame(player, isLocalMode ? gameSettings : null)
+
   const {
     connected,
+    connecting,
     room,
     players,
     currentWordpiece,
@@ -55,11 +65,13 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     submitWord,
     usePowerUp,
     leaveRoom,
-  } = useGameSocket(player, gameSettings)
+  } = useGameSocket(player, isOnlineMode ? gameSettings : {})
 
-  const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
-  const isOnlineMode = gameSettings.mode === "online" || gameSettings.mode === "wordmaster"
+  useEffect(() => {
+    setUsePowerUpHook(usePowerUp)
+  }, [usePowerUp])
 
+  // Determine active game state and players
   const activeGameState = isLocalMode
     ? localGameState
     : {
@@ -75,19 +87,15 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   const activePlayers = isLocalMode ? localPlayers : players
 
-  // Debug log to check player data - only log once when players change
-  useEffect(() => {
-    if (activePlayers && activePlayers.length > 0) {
-      console.log("Active players in GameBoard:", activePlayers)
-    }
-  }, [activePlayers]) // Only depend on the length to avoid excessive re-renders
+  console.log("GameBoard - Active game state:", activeGameState)
+  console.log("GameBoard - Active players:", activePlayers)
 
   const handleLeaveGame = useCallback(() => {
     setShowLeaveConfirm(true)
   }, [])
 
   const confirmLeaveGame = useCallback(() => {
-    if (!isLocalMode) {
+    if (isOnlineMode) {
       leaveRoom()
     }
 
@@ -95,16 +103,15 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     if (gameSettings.mode === "local") {
       navigate("/local-setup", {
         state: {
-          previousPlayers: gameSettings.localPlayers, // Use initial setup players
+          previousPlayers: gameSettings.localPlayers,
         },
       })
     } else {
       navigate("/") // Default navigation for other modes
     }
     setShowLeaveConfirm(false)
-  }, [isLocalMode, leaveRoom, navigate, gameSettings.mode, gameSettings.localPlayers])
+  }, [isOnlineMode, leaveRoom, navigate, gameSettings.mode, gameSettings.localPlayers])
 
-  // Add this new function to handle canceling the leave game dialog
   const cancelLeaveGame = useCallback(() => {
     setShowLeaveConfirm(false)
   }, [])
@@ -116,84 +123,61 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
       } else {
         const otherPlayer = players.find((p) => p.id !== player.id)
         if (otherPlayer) {
-          usePowerUp(type, otherPlayer.id)
+          usePowerUpHook(type, otherPlayer.id)
         } else {
-          usePowerUp(type)
+          usePowerUpHook(type)
         }
       }
     },
-    [players, player.id, usePowerUp, isLocalMode, handleLocalUsePowerUp],
+    [players, player.id, usePowerUpHook, isLocalMode, handleLocalUsePowerUp],
   )
 
+  // Initialize local game
   useEffect(() => {
-    if (gameSettings.mode === "single" || gameSettings.mode === "local") {
-      // Only initialize if not already initialized
-      if (!localGameState) {
-        initializeLocalGame()
-      }
+    if (isLocalMode && !localGameState) {
+      console.log("Initializing local game...")
+      initializeLocalGame()
     }
-  }, [gameSettings.mode, initializeLocalGame, localGameState])
+  }, [isLocalMode, localGameState, initializeLocalGame])
 
+  // Initialize online game
   useEffect(() => {
-    if (isOnlineMode) {
-      const initializeGame = async () => {
+    if (isOnlineMode && connected) {
+      const initializeOnlineGame = async () => {
         try {
           if (gameSettings.isHost && !gameSettings.roomId) {
+            console.log("Creating new room as host...")
             const roomId = await createRoom(gameSettings.mode)
             setGameSettings((prev) => ({ ...prev, roomId }))
           } else if (gameSettings.roomId) {
-            joinRoom(gameSettings.roomId)
+            console.log("Joining existing room:", gameSettings.roomId)
+            // joinRoom is handled in the useGameSocket hook
           }
         } catch (err) {
-          console.error("Error initializing game:", err)
+          console.error("Error initializing online game:", err)
         }
       }
 
-      if (connected) {
-        initializeGame()
-      }
+      initializeOnlineGame()
     }
+  }, [isOnlineMode, connected, gameSettings.isHost, gameSettings.roomId, gameSettings.mode, createRoom])
 
-    return () => {
-      if (isOnlineMode) {
-        leaveRoom()
-      }
-    }
-  }, [
-    connected,
-    gameSettings.isHost,
-    gameSettings.roomId,
-    gameSettings.mode,
-    createRoom,
-    joinRoom,
-    leaveRoom,
-    isOnlineMode,
-  ])
-
+  // Handle game over navigation
   useEffect(() => {
-    // Only proceed if we have a game over state
     const isGameOver = gameStatus === "over" || (localGameState && localGameState.status === "over")
 
     if (isGameOver && !showLeaveConfirm) {
-      // Add check to prevent navigation during leave confirmation
-      // Get the complete player data from the setup
       const setupPlayers = gameSettings.localPlayers || []
-
-      // Create enhanced scores object with player information for the GameOver screen
       const enhancedScores = {}
       const gameScores = isLocalMode ? localGameState?.scores || {} : scores || {}
 
-      // For each player ID in the scores...
       Object.keys(gameScores).forEach((playerId) => {
-        // First try to find the player in activePlayers (which has the most up-to-date data)
         let playerInfo = activePlayers.find((p) => p.id === playerId)
 
-        // If not found, try to find in the setup players
         if (!playerInfo && setupPlayers.length > 0) {
           playerInfo = setupPlayers.find((p) => p.id === playerId)
         }
 
-        // If still not found, create a minimal player object
         if (!playerInfo) {
           playerInfo = {
             id: playerId,
@@ -203,7 +187,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
           }
         }
 
-        // Add the player data to the enhanced scores
         enhancedScores[playerId] = {
           score: gameScores[playerId] || 0,
           nickname: playerInfo.nickname || playerInfo.name || `Player ${playerId}`,
@@ -212,15 +195,13 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         }
       })
 
-      console.log("Enhanced scores being passed to GameOver:", enhancedScores)
-
       navigate("/game-over", {
         state: {
           scores: enhancedScores,
           roomId: gameSettings.roomId,
           mode: gameSettings.mode,
-          localPlayers: activePlayers, // Pass the complete player list
-          setupPlayers: setupPlayers, // Also pass the original setup players
+          localPlayers: activePlayers,
+          setupPlayers: setupPlayers,
         },
       })
     }
@@ -240,48 +221,37 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     activePlayers,
   ])
 
+  // Handle damage effects
   useEffect(() => {
     if (!activeGameState?.lives || !player?.id) return
 
-    // Only check for damage if we have previous lives data
     if (Object.keys(prevLivesRef.current).length > 0) {
-      // For all players, check if they lost a life
       Object.entries(activeGameState.lives).forEach(([playerId, currentLives]) => {
         const previousLives = prevLivesRef.current[playerId] || currentLives
 
-        // Only show damage effect if lives decreased from the previous state
-        // AND this isn't just the initial state being set
         if (currentLives < previousLives && previousLives !== 0) {
-          console.log(`Player ${playerId} lost a life! Current: ${currentLives}, Previous: ${previousLives}`)
           setShowDamageEffect(true)
-
           const timer = setTimeout(() => {
             setShowDamageEffect(false)
           }, 500)
-
           return () => clearTimeout(timer)
         }
       })
     }
 
-    // Update the previous lives reference
     prevLivesRef.current = { ...activeGameState.lives }
   }, [activeGameState?.lives])
 
-  useEffect(() => {
-    if (activeGameState?.lives && Object.keys(activeGameState.lives).length > 0) {
-      if (Object.keys(prevLivesRef.current).length === 0) {
-        prevLivesRef.current = { ...activeGameState.lives }
-      }
-    }
-  }, [activeGameState?.lives])
-
-  if (!connected && isOnlineMode) {
+  // Show loading states
+  if (isOnlineMode && connecting) {
     return <GameLoading message="Connecting to game server..." error={error} />
   }
 
-  // Show online waiting room for online modes
-  if (isOnlineMode && gameStatus === "waiting") {
+  if (isOnlineMode && !connected && error) {
+    return <GameLoading message="Failed to connect to server" error={error} />
+  }
+
+  if (isOnlineMode && connected && gameStatus === "waiting") {
     return (
       <OnlineWaitingRoom
         room={room}
@@ -293,25 +263,11 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     )
   }
 
-  // Show local waiting room for local modes
-  if (!isOnlineMode && !isLocalMode && gameStatus === "waiting") {
-    return (
-      <GameWaiting
-        gameSettings={gameSettings}
-        players={players}
-        leaveRoom={leaveRoom}
-        navigate={navigate}
-        startGame={startGame}
-        isLocalMode={isLocalMode}
-      />
-    )
-  }
-
   if (isLocalMode && !localGameState) {
     return <GameLoading message="Initializing game..." />
   }
 
-  // For local multiplayer, we need to find the current player based on turn
+  // Main game UI
   const currentPlayerId = activeGameState?.currentTurn
   const currentPlayer = activePlayers.find((p) => p.id === currentPlayerId) || {
     id: "",
@@ -320,7 +276,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     color: "#4287f5",
   }
 
-  // In local multiplayer, we don't disable the input - we just show who should be playing
   const isLocalMultiplayer = gameSettings.mode === "local"
   const disableInput =
     (!isLocalMultiplayer && currentPlayerId !== player.id) || (isOnlineMode && currentPlayerId !== player.id)
