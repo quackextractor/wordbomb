@@ -5,36 +5,51 @@ import { useEffect, useRef, useState } from "react"
 /**
  * Canvas component for drawing player avatars
  */
-function AvatarCanvas({ color = "#4287f5", onAvatarCreated }) {
+function AvatarCanvas({ color = "#4287f5", onAvatarCreated, initialAvatar = null }) {
     const canvasRef = useRef(null)
     const [isDrawing, setIsDrawing] = useState(false)
     const [hasDrawn, setHasDrawn] = useState(false)
     const prevPos = useRef({ x: 0, y: 0 })
+    const [avatarLoaded, setAvatarLoaded] = useState(false)
 
     useEffect(() => {
         const canvas = canvasRef.current
         const ctx = canvas.getContext("2d")
 
-        if (!hasDrawn) {
+        // If there's an initial avatar, load it
+        if (initialAvatar && !avatarLoaded) {
+            const img = new Image()
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+                setHasDrawn(true)
+                setAvatarLoaded(true)
+                saveAvatar()
+            }
+            img.src = initialAvatar
+        } else if (!hasDrawn) {
+            // Otherwise draw the default avatar
             ctx.fillStyle = "#ffffff"
             ctx.fillRect(0, 0, canvas.width, canvas.height)
             drawDefaultAvatar(ctx, color)
         }
-    }, [color])
+    }, [color, initialAvatar, avatarLoaded, hasDrawn])
 
     useEffect(() => {
         const canvas = canvasRef.current
         const ctx = canvas.getContext("2d")
 
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        if (!avatarLoaded) {
+            ctx.fillStyle = "#ffffff"
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-        if (!hasDrawn) {
-            drawDefaultAvatar(ctx, color)
+            if (!hasDrawn) {
+                drawDefaultAvatar(ctx, color)
+            }
+
+            saveAvatar()
         }
-
-        saveAvatar()
-    }, [color, hasDrawn])
+    }, [color, hasDrawn, avatarLoaded])
 
     const drawDefaultAvatar = (ctx, color) => {
         const canvas = canvasRef.current
@@ -78,6 +93,7 @@ function AvatarCanvas({ color = "#4287f5", onAvatarCreated }) {
     const handleMouseDown = (e) => {
         setIsDrawing(true)
         setHasDrawn(true)
+        setAvatarLoaded(true) // Mark as loaded since we're drawing over it
 
         const canvas = canvasRef.current
         const rect = canvas.getBoundingClientRect()
@@ -124,6 +140,7 @@ function AvatarCanvas({ color = "#4287f5", onAvatarCreated }) {
         ctx.fillRect(0, 0, canvas.width, canvas.height)
 
         setHasDrawn(false)
+        setAvatarLoaded(false)
     }
 
     const handleTouchStart = (e) => {

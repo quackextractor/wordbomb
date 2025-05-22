@@ -32,10 +32,8 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     const [lastSubmittedWord, setLastSubmittedWord] = useState("")
     const [wordDefinitions, setWordDefinitions] = useState([]) // [{word, definitions: []}]
     const prevLivesRef = useRef({})
-
     const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
         useLocalGame(player, gameSettings)
-
     const {
         connected,
         room,
@@ -74,6 +72,13 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     const activePlayers = isLocalMode ? localPlayers : players
 
+    // Debug log to check player data - only log once when players change
+    useEffect(() => {
+        if (activePlayers && activePlayers.length > 0) {
+            console.log("Active players in GameBoard:", activePlayers)
+        }
+    }, [activePlayers]) // Only depend on the length to avoid excessive re-renders
+
     const handleLeaveGame = useCallback(() => {
         setShowLeaveConfirm(true)
     }, [])
@@ -92,25 +97,24 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     const handleUsePowerUp = useCallback(
         (type, targetId) => {
-            if (isLocalMode) {
-                handleLocalUsePowerUp(type, targetId)
+            const otherPlayer = players.find((p) => p.id !== player.id)
+            if (otherPlayer) {
+                usePowerUp(type, otherPlayer.id)
             } else {
-                const otherPlayer = players.find((p) => p.id !== player.id)
-                if (otherPlayer) {
-                    usePowerUp(type, otherPlayer.id)
-                } else {
-                    usePowerUp(type)
-                }
+                usePowerUp(type)
             }
         },
-        [isLocalMode, handleLocalUsePowerUp, players, player.id, usePowerUp],
+        [players, player.id, usePowerUp],
     )
 
     useEffect(() => {
         if (gameSettings.mode === "single" || gameSettings.mode === "local") {
-            initializeLocalGame()
+            // Only initialize if not already initialized
+            if (!localGameState) {
+                initializeLocalGame()
+            }
         }
-    }, [gameSettings.mode, initializeLocalGame])
+    }, [gameSettings.mode, initializeLocalGame, localGameState])
 
     useEffect(() => {
         if (gameSettings.mode !== "single" && gameSettings.mode !== "local") {
@@ -146,23 +150,73 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     }, [gameSettings.isHost, gameSettings.mode, room, startGame])
 
     useEffect(() => {
-        if (gameStatus === "over" || (localGameState && localGameState.status === "over")) {
+        // Only proceed if we have a game over state
+        const isGameOver = gameStatus === "over" || (localGameState && localGameState.status === "over")
+
+        if (isGameOver && !showLeaveConfirm) {
+            // Add check to prevent navigation during leave confirmation
+            // Get the complete player data from the setup
+            const setupPlayers = gameSettings.localPlayers || []
+
+            // Create enhanced scores object with player information for the GameOver screen
+            const enhancedScores = {}
+            const gameScores = isLocalMode ? localGameState?.scores || {} : scores || {}
+
+            // For each player ID in the scores...
+            Object.keys(gameScores).forEach((playerId) => {
+                // First try to find the player in activePlayers (which has the most up-to-date data)
+                let playerInfo = activePlayers.find((p) => p.id === playerId)
+
+                // If not found, try to find in the setup players
+                if (!playerInfo && setupPlayers.length > 0) {
+                    playerInfo = setupPlayers.find((p) => p.id === playerId)
+                }
+
+                // If still not found, create a minimal player object
+                if (!playerInfo) {
+                    playerInfo = {
+                        id: playerId,
+                        nickname: playerId === player.id ? player.nickname : `Player ${playerId.slice(-1)}`,
+                        avatar: null,
+                        color: "#4287f5",
+                    }
+                }
+
+                // Add the player data to the enhanced scores
+                enhancedScores[playerId] = {
+                    score: gameScores[playerId] || 0,
+                    nickname: playerInfo.nickname || playerInfo.name || `Player ${playerId}`,
+                    avatar: playerInfo.avatar,
+                    color: playerInfo.color,
+                }
+            })
+
+            console.log("Enhanced scores being passed to GameOver:", enhancedScores)
+
             navigate("/game-over", {
                 state: {
-                    scores: isLocalMode ? localGameState.scores : scores,
+                    scores: enhancedScores,
                     roomId: gameSettings.roomId,
                     mode: gameSettings.mode,
-                    localPlayers: isLocalMode ? localPlayers : null,
+                    localPlayers: activePlayers, // Pass the complete player list
+                    setupPlayers: setupPlayers, // Also pass the original setup players
                 },
             })
         }
-    }, [gameStatus, localGameState, navigate, scores, gameSettings.roomId, gameSettings.mode, isLocalMode, localPlayers])
-
-    useEffect(() => {
-        if (wordInputRef.current && typeof wordInputRef.current.clearUsedWords === "function") {
-            wordInputRef.current.clearUsedWords()
-        }
-    }, [startGame])
+    }, [
+        gameStatus,
+        localGameState?.status,
+        showLeaveConfirm,
+        navigate,
+        gameSettings.roomId,
+        gameSettings.mode,
+        gameSettings.localPlayers,
+        isLocalMode,
+        scores,
+        localGameState?.scores,
+        player.id,
+        player.nickname,
+    ])
 
     useEffect(() => {
         if (!activeGameState?.lives || !player?.id) return

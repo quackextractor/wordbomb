@@ -22,14 +22,17 @@ export default function useLocalGame(player, gameSettings) {
     // Callback for the engine to handle game over
     const handleEngineGameOver = useCallback(
         (scores) => {
+            // Don't try to format scores here - just pass them to the navigation
             navigate("/game-over", {
                 state: {
-                    scores: scores,
+                    scores: scores, // Pass raw scores
                     mode: gameSettings.mode,
+                    localPlayers: localPlayers,
+                    setupPlayers: gameSettings.localPlayers || [],
                 },
             })
         },
-        [navigate, gameSettings.mode],
+        [navigate, gameSettings],
     )
 
     // Initialize game engine
@@ -64,9 +67,10 @@ export default function useLocalGame(player, gameSettings) {
             initialPlayers = engine.initializeGame()
         }
 
+        console.log("Initial players in useLocalGame:", initialPlayers)
         setLocalPlayers(initialPlayers)
         // Initial state is set by the engine via handleEngineStateUpdate
-    }, [player, gameSettings, handleEngineStateUpdate, handleEngineGameOver])
+    }, [player, gameSettings, handleEngineStateUpdate, handleEngineGameOver]) // initializeLocalGame is now stable due to useCallback
 
     // Word submission logic
     const handleLocalSubmitWord = useCallback((word) => {

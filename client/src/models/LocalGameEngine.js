@@ -19,6 +19,7 @@ export default class LocalGameEngine {
             new Player({
                 id: this.playerInfo.id,
                 name: this.playerInfo.nickname,
+                nickname: this.playerInfo.nickname,
                 avatar: this.playerInfo.avatar,
                 color: this.playerInfo.color,
                 isHost: true,
@@ -31,6 +32,7 @@ export default class LocalGameEngine {
                 new Player({
                     id: "player2",
                     name: "Player 2",
+                    nickname: "Player 2",
                     avatar: null,
                     color: "#a777e3",
                     isHost: false,
@@ -54,18 +56,22 @@ export default class LocalGameEngine {
 
     // New method to initialize game with custom players for local multiplayer
     initializeGameWithPlayers(players) {
+        console.log("Initializing game with players:", players)
+
         const gamePlayers = players.map(
             (p) =>
                 new Player({
                     id: p.id,
-                    name: p.nickname || p.name, // Ensure we use nickname if available
-                    nickname: p.nickname || p.name, // Add nickname explicitly
+                    name: p.nickname || p.name || `Player ${p.id}`, // Ensure we use nickname if available
+                    nickname: p.nickname || p.name || `Player ${p.id}`, // Add nickname explicitly
                     avatar: p.avatar,
                     color: p.color,
                     isHost: p.isHost,
                     hp: this.gameSettings.lives, // Initialize HP from game settings
                 }),
         )
+
+        console.log("Created game players:", gamePlayers)
 
         // Pass gameSettings to GameManager constructor
         this.gameManager = new GameManager(gamePlayers, this.gameSettings)
@@ -252,13 +258,7 @@ export default class LocalGameEngine {
         let turnOrderChanged = false
         if (type === "reverse_turn" && this.gameSettings.mode === "local" && this.gameManager.playingPlayers.length > 1) {
             this.gameManager.turnManager.reverseTurnOrder()
-            // After reversing, the TurnManager's currentPlayerId might need to be re-established
-            // if the current player index logic in reverseTurnOrder isn't perfectly aligned with active players.
-            // However, endTurn should handle picking the correct next player based on the new order.
-            // For now, we assume reverseTurnOrder correctly sets currentPlayerId or it will be corrected by next endTurn.
             turnOrderChanged = true
-            // The current turn continues for the player who used the power-up,
-            // but the *next* player will be based on the reversed order.
         }
         // Add other power-up effects here
 
