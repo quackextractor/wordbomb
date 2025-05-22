@@ -1,13 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import PropTypes from "prop-types"
 
-function OnlineWaitingRoom({ room, players, gameSettings, startGame, leaveRoom }) {
+function OnlineWaitingRoom({ room, players, gameSettings, startGame, startGameWithCountdown, leaveRoom, countdown }) {
   const navigate = useNavigate()
   const [copied, setCopied] = useState(false)
-  const [countdown, setCountdown] = useState(null)
 
   const copyRoomId = () => {
     navigator.clipboard.writeText(gameSettings.roomId)
@@ -17,22 +16,8 @@ function OnlineWaitingRoom({ room, players, gameSettings, startGame, leaveRoom }
 
   const handleStartGame = () => {
     // Start a countdown before starting the game
-    setCountdown(3)
+    startGameWithCountdown(3)
   }
-
-  useEffect(() => {
-    if (countdown === null) return
-
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1)
-      }, 1000)
-      return () => clearTimeout(timer)
-    } else {
-      // Start the game when countdown reaches 0
-      startGame()
-    }
-  }, [countdown, startGame])
 
   const handleLeaveRoom = () => {
     leaveRoom()
@@ -150,7 +135,9 @@ OnlineWaitingRoom.propTypes = {
   players: PropTypes.array.isRequired,
   gameSettings: PropTypes.object.isRequired,
   startGame: PropTypes.func.isRequired,
+  startGameWithCountdown: PropTypes.func.isRequired,
   leaveRoom: PropTypes.func.isRequired,
+  countdown: PropTypes.number,
 }
 
 export default OnlineWaitingRoom

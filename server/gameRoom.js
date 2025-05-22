@@ -16,6 +16,8 @@ class GameRoom {
     this.gameMode = null
     this.turnTimer = null
     this.turnTime = 15 // Default turn time in seconds
+    this.disconnectedPlayers = new Map() // Track disconnected players by ID
+    this.eliminatedPlayers = new Set() // Track eliminated players
   }
 
   getRoomState() {
@@ -24,6 +26,7 @@ class GameRoom {
       players: this.players,
       gameInProgress: this.gameInProgress,
       turnOrder: this.turnOrder,
+      eliminatedPlayers: Array.from(this.eliminatedPlayers),
     }
   }
 
@@ -37,11 +40,36 @@ class GameRoom {
       turnOrder: this.turnOrder,
       currentTurn: this.currentTurn,
       usedWords: Array.from(this.usedWords),
+      eliminatedPlayers: Array.from(this.eliminatedPlayers),
     }
   }
 
   addPlayer(player) {
-    // Check if player already exists
+    // Check if this is a reconnecting player
+    const disconnectedPlayer = this.disconnectedPlayers.get(player.id)
+
+    if (disconnectedPlayer && this.gameInProgress) {
+      console.log(`Player ${player.id} is reconnecting to the game`)
+      // Update the socket ID for the reconnecting player
+      disconnectedPlayer.socketId = player.socketId
+      disconnectedPlayer.disconnected = false
+
+      // Add the player back to the active players list
+      const existingIndex = this.players.findIndex((p) => p.id === player.id)
+      if (existingIndex !== -1) {
+        this.players[existingIndex] = disconnectedPlayer
+      } else {
+        this.players.push(disconnectedPlayer)
+      }
+
+      // Remove from disconnected players map
+      this.disconnectedPlayers.delete(player.id)
+
+      // Return true to indicate this was a reconnection
+      return true
+    }
+
+    // Regular player join logic
     const existingPlayerIndex = this.players.findIndex((p) => p.id === player.id)
 
     if (existingPlayerIndex !== -1) {
@@ -70,6 +98,9 @@ class GameRoom {
         }
       }
     }
+
+    // Return false to indicate this was not a reconnection
+    return false
   }
 
   removePlayer(playerId) {
@@ -85,15 +116,28 @@ class GameRoom {
   }
 
   handlePlayerDisconnect(playerId) {
-    // Mark player as disconnected but keep in the game
+    // Find the player
     const player = this.players.find((p) => p.id === playerId)
     if (player) {
+      // Mark player as disconnected
       player.disconnected = true
-    }
 
-    // If all players are disconnected, end the game
-    if (this.players.every((p) => p.disconnected)) {
-      this.endGame()
+      // Store in disconnected players map for potential reconnection
+      this.disconnectedPlayers.set(playerId, player)
+
+      console.log(`Player ${playerId} disconnected and added to reconnection list`)
+
+      // If all players are disconnected, end the game
+      if (this.players.every((p) => p.disconnected)) {
+        this.endGame()
+        return
+      }
+
+      // If it's the disconnected player's turn, move to next turn
+      if (this.currentTurn === playerId && this.gameInProgress) {
+        console.log(`Current turn player ${playerId} disconnected, advancing to next turn`)
+        this.nextTurn()
+      }
     }
   }
 
@@ -102,6 +146,7 @@ class GameRoom {
     this.gameMode = mode
     this.usedWords.clear()
     this.currentWordpiece = generateWordpiece()
+    this.eliminatedPlayers.clear()
 
     // Initialize player stats
     this.players.forEach((player) => {
@@ -140,7 +185,10 @@ class GameRoom {
       clearTimeout(this.turnTimer)
     }
 
+    console.log(`Starting turn timer for player ${this.currentTurn}, ${this.turnTime} seconds`)
+
     this.turnTimer = setTimeout(() => {
+      console.log(`Turn timer expired for player ${this.currentTurn}`)
       this.handleTimeout()
     }, this.turnTime * 1000)
   }
@@ -148,19 +196,25 @@ class GameRoom {
   handleTimeout() {
     if (!this.gameInProgress) return
 
+    console.log(`Handling timeout for player ${this.currentTurn}`)
+
     // Player loses a life on timeout
     if (this.currentTurn) {
       this.lives[this.currentTurn]--
+      console.log(`Player ${this.currentTurn} lost a life, now has ${this.lives[this.currentTurn]} lives`)
 
       // Check if player is eliminated
       if (this.lives[this.currentTurn] <= 0) {
+        console.log(`Player ${this.currentTurn} has been eliminated`)
+        // Add to eliminated players set
+        this.eliminatedPlayers.add(this.currentTurn)
         // Remove player from turn order
         this.turnOrder = this.turnOrder.filter((id) => id !== this.currentTurn)
       }
     }
 
     // Move to next turn
-    this.nextTurn()
+    return this.nextTurn()
   }
 
   nextTurn() {
@@ -174,10 +228,12 @@ class GameRoom {
 
     // Check if game is over (only one or zero players left)
     if (this.turnOrder.length <= 1) {
+      console.log("Game over condition met: only one or zero players left")
       this.endGame()
       return {
         gameOver: true,
         finalScores: this.scores,
+        winner: this.turnOrder.length === 1 ? this.turnOrder[0] : null,
       }
     }
 
@@ -185,6 +241,8 @@ class GameRoom {
     const currentIndex = this.turnOrder.indexOf(this.currentTurn)
     const nextIndex = (currentIndex + 1) % this.turnOrder.length
     this.currentTurn = this.turnOrder[nextIndex]
+
+    console.log(`Moving to next turn, player ${this.currentTurn}`)
 
     // Generate new wordpiece
     this.currentWordpiece = generateWordpiece()
@@ -197,6 +255,8 @@ class GameRoom {
       wordpiece: this.currentWordpiece,
       timer: this.turnTime,
       currentTurn: this.currentTurn,
+      lives: this.lives,
+      eliminatedPlayers: Array.from(this.eliminatedPlayers),
     }
   }
 
@@ -272,6 +332,7 @@ class GameRoom {
           this.lives[targetPlayerId]--
           // Check if target player is eliminated
           if (this.lives[targetPlayerId] <= 0) {
+            this.eliminatedPlayers.add(targetPlayerId)
             this.turnOrder = this.turnOrder.filter((id) => id !== targetPlayerId)
           }
         }
@@ -297,6 +358,20 @@ class GameRoom {
 
   getPowerUps() {
     return this.powerUps
+  }
+
+  isPlayerDisconnected(playerId) {
+    return this.disconnectedPlayers.has(playerId)
+  }
+
+  getReconnectionState(playerId) {
+    if (this.gameInProgress && this.disconnectedPlayers.has(playerId)) {
+      return {
+        canReconnect: true,
+        gameState: this.getGameState(),
+      }
+    }
+    return { canReconnect: false }
   }
 }
 

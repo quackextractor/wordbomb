@@ -8,13 +8,14 @@ function PlayersList({ activePlayers, activeGameState }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {activePlayers.map((p) => {
                     const playerLives = activeGameState?.lives[p.id] || 0
-                    const isPlayerDead = playerLives <= 0
+                    const isPlayerDead =
+                        playerLives <= 0 || (activeGameState?.eliminatedPlayers && activeGameState.eliminatedPlayers.includes(p.id))
                     const isCurrentTurn = activeGameState?.currentTurn === p.id
 
                     return (
                         <div
                             key={p.id}
-                            className={`bg-white/5 rounded-lg p-3 flex items-center transition-all duration-300 
+                            className={`bg-white/5 rounded-lg p-3 flex items-center transition-all duration-300 relative
                 ${isPlayerDead ? "opacity-50 grayscale" : ""} 
                 ${isCurrentTurn ? "ring-2 ring-purple-500 bg-purple-500/10" : "hover:bg-white/10"}`}
                         >

@@ -14,6 +14,8 @@ export default function useLocalGame(player, gameSettings) {
     const [localPlayers, setLocalPlayers] = useState([])
     const gameEngineRef = useRef(null)
 
+    const isLocalGameMode = gameSettings?.mode === "single" || gameSettings?.mode === "local"
+
     // Callback for the engine to update React state
     const handleEngineStateUpdate = useCallback((newState) => {
         setLocalGameState((prevState) => ({ ...prevState, ...newState }))
@@ -37,7 +39,7 @@ export default function useLocalGame(player, gameSettings) {
 
     // Initialize game engine
     const initializeLocalGame = useCallback(() => {
-        if (!player || !gameSettings) return
+        if (!player || !gameSettings || !isLocalGameMode) return
 
         // Ensure previous engine is cleaned up if any
         if (gameEngineRef.current) {
@@ -70,7 +72,7 @@ export default function useLocalGame(player, gameSettings) {
         console.log("Initial players in useLocalGame:", initialPlayers)
         setLocalPlayers(initialPlayers)
         // Initial state is set by the engine via handleEngineStateUpdate
-    }, [player, gameSettings, handleEngineStateUpdate, handleEngineGameOver]) // initializeLocalGame is now stable due to useCallback
+    }, [player, gameSettings, handleEngineStateUpdate, handleEngineGameOver, isLocalGameMode]) // initializeLocalGame is now stable due to useCallback
 
     // Word submission logic
     const handleLocalSubmitWord = useCallback((word) => {
@@ -88,7 +90,7 @@ export default function useLocalGame(player, gameSettings) {
 
     // Effect to initialize and clean up the game
     useEffect(() => {
-        // Initialize on mount if player and gameSettings are available
+        // Initialize on mount if player and gameSettings are available and mode is appropriate
         initializeLocalGame()
 
         // Cleanup on unmount
@@ -97,7 +99,7 @@ export default function useLocalGame(player, gameSettings) {
                 gameEngineRef.current.cleanup()
             }
         }
-    }, [player, gameSettings, initializeLocalGame]) // initializeLocalGame is now stable due to useCallback
+    }, [player, gameSettings, initializeLocalGame, isLocalGameMode]) // initializeLocalGame is now stable due to useCallback
 
     return {
         localGameState,

@@ -23,17 +23,17 @@ app.use((req, res, next) => {
 
 // Apply CORS to all HTTP requests (including engine.io polling)
 app.use(
-  cors({
-    origin: [
-      "http://localhost:2139",
-      "http://127.0.0.1:2139", // Added this line to allow 127.0.0.1
-      "http://localhost:5173",
-      "http://127.0.0.1:5173", // Added this line too
-      "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
-    ],
-    methods: ["GET", "POST"],
-    credentials: true,
-  }),
+    cors({
+      origin: [
+        "http://localhost:2139",
+        "http://127.0.0.1:2139",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
+      ],
+      methods: ["GET", "POST"],
+      credentials: true,
+    }),
 )
 
 // Simple health check
@@ -45,9 +45,9 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:2139",
-      "http://127.0.0.1:2139", // Added this line to allow 127.0.0.1
+      "http://127.0.0.1:2139",
       "http://localhost:5173",
-      "http://127.0.0.1:5173", // Added this line too
+      "http://127.0.0.1:5173",
       "https://kingfishfrontend-c3eff4fhandsc0f9.westeurope-01.azurewebsites.net",
     ],
     methods: ["GET", "POST"],
@@ -85,6 +85,17 @@ io.on("connection", (socket) => {
     }
   })
 
+  // Check if player can reconnect to an ongoing game
+  socket.on("room:check_reconnect", ({ roomId, playerId }, callback) => {
+    const room = gameRooms.get(roomId)
+    if (room) {
+      const reconnectState = room.getReconnectionState(playerId)
+      callback(reconnectState)
+    } else {
+      callback({ canReconnect: false, error: "Room does not exist" })
+    }
+  })
+
   // Join a room
   socket.on("room:join", (data) => {
     const { roomId, playerId, playerName, playerAvatar, playerColor, isHost } = data
@@ -114,13 +125,18 @@ io.on("connection", (socket) => {
       socketId: socket.id,
     }
 
-    room.addPlayer(player)
+    const isReconnection = room.addPlayer(player)
 
     // Join socket.io room
     socket.join(roomId)
 
     // Send room update to all clients in the room
     io.to(roomId).emit("room:update", room.getRoomState())
+
+    // If this is a reconnection to an active game, send the current game state
+    if (isReconnection && room.gameInProgress) {
+      socket.emit("game:reconnect", room.getGameState())
+    }
 
     console.log(`Player ${playerName} (${playerId}) joined room ${roomId}`)
   })
@@ -145,6 +161,17 @@ io.on("connection", (socket) => {
     }
   })
 
+  // Start game with countdown
+  socket.on("game:start_countdown", ({ roomId, countdown = 3 }) => {
+    const room = gameRooms.get(roomId)
+    if (room) {
+      // Broadcast countdown to all players
+      io.to(roomId).emit("game:countdown", { countdown })
+
+      console.log(`Starting game countdown in room ${roomId}: ${countdown} seconds`)
+    }
+  })
+
   // Start game
   socket.on("game:start", ({ roomId, mode }) => {
     const room = gameRooms.get(roomId)
@@ -162,11 +189,17 @@ io.on("connection", (socket) => {
   socket.on("game:submit", ({ roomId, playerId, word, wordpiece }) => {
     const room = gameRooms.get(roomId)
     if (room) {
+      console.log(`Player ${playerId} submitting word "${word}" in room ${roomId}`)
+
       const result = room.submitWord(playerId, word, wordpiece)
 
       if (result.valid) {
+        console.log(`Word "${word}" is valid, sending result to all clients`)
+
         // Send submission result to all clients
         io.to(roomId).emit("game:submission_result", {
+          playerId,
+          word,
           scores: room.getScores(),
           definition: result.definition,
         })
@@ -174,15 +207,27 @@ io.on("connection", (socket) => {
         // Generate new wordpiece and update turn
         const newState = room.nextTurn()
 
-        // Send new wordpiece to all clients
-        io.to(roomId).emit("game:new_wordpiece", {
-          wordpiece: newState.wordpiece,
-          timer: newState.timer,
-          currentTurn: newState.currentTurn,
-        })
+        if (newState.gameOver) {
+          // Game is over, send game over event
+          io.to(roomId).emit("game:over", {
+            finalScores: newState.finalScores,
+            winner: newState.winner,
+          })
+          console.log(`Game over in room ${roomId}, winner: ${newState.winner || "none"}`)
+        } else {
+          // Send new wordpiece to all clients
+          io.to(roomId).emit("game:new_wordpiece", {
+            wordpiece: newState.wordpiece,
+            timer: newState.timer,
+            currentTurn: newState.currentTurn,
+            lives: newState.lives,
+            eliminatedPlayers: newState.eliminatedPlayers,
+          })
+        }
 
         console.log(`Player ${playerId} submitted valid word "${word}" in room ${roomId}`)
       } else {
+        console.log(`Word "${word}" is invalid: ${result.error}`)
         // Send error only to the submitting client
         socket.emit("error", result.error || "Invalid word")
       }
@@ -201,6 +246,8 @@ io.on("connection", (socket) => {
           powerUps: room.getPowerUps(),
           type: powerUpType,
           turnOrder: result.turnOrder,
+          lives: room.getLives(),
+          eliminatedPlayers: Array.from(room.eliminatedPlayers),
         })
 
         console.log(`Player ${playerId} used power-up ${powerUpType} in room ${roomId}`)
@@ -216,7 +263,20 @@ io.on("connection", (socket) => {
     const room = gameRooms.get(roomId)
     if (room) {
       const definition = wordManager.getDefinition(word)
-      socket.emit("game:definition", definition)
+
+      // Send definition to all clients in the room
+      io.to(roomId).emit("game:definition", {
+        word,
+        definition,
+      })
+    }
+  })
+
+  // Request game state update (for clients that might have missed events)
+  socket.on("game:request_state", ({ roomId }) => {
+    const room = gameRooms.get(roomId)
+    if (room && room.gameInProgress) {
+      socket.emit("game:state_update", room.getGameState())
     }
   })
 
@@ -243,11 +303,24 @@ io.on("connection", (socket) => {
           // If game is in progress, handle turn changes if needed
           if (room.gameInProgress && room.currentTurn === player.id) {
             const newState = room.nextTurn()
-            io.to(roomId).emit("game:new_wordpiece", {
-              wordpiece: newState.wordpiece,
-              timer: newState.timer,
-              currentTurn: newState.currentTurn,
-            })
+
+            if (newState.gameOver) {
+              // Game is over, send game over event
+              io.to(roomId).emit("game:over", {
+                finalScores: newState.finalScores,
+                winner: newState.winner,
+              })
+              console.log(`Game over in room ${roomId}, winner: ${newState.winner || "none"}`)
+            } else {
+              // Send new wordpiece to all clients
+              io.to(roomId).emit("game:new_wordpiece", {
+                wordpiece: newState.wordpiece,
+                timer: newState.timer,
+                currentTurn: newState.currentTurn,
+                lives: newState.lives,
+                eliminatedPlayers: newState.eliminatedPlayers,
+              })
+            }
           }
         }
 

@@ -34,16 +34,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
   const [wordDefinitions, setWordDefinitions] = useState([]) // [{word, definitions: []}]
   const prevLivesRef = useRef({})
   const [usePowerUpHook, setUsePowerUpHook] = useState(null)
-
-  // Determine game mode
-  const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
-  const isOnlineMode = gameSettings.mode === "online" || gameSettings.mode === "wordmaster"
-
-  console.log("GameBoard - Game mode:", gameSettings.mode, "isLocalMode:", isLocalMode, "isOnlineMode:", isOnlineMode)
-
-  // Initialize hooks based on mode
-  const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
-    useLocalGame(player, isLocalMode ? gameSettings : null)
+  const [countdownState, setCountdownState] = useState(null)
 
   const {
     connected,
@@ -59,22 +50,30 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     currentTurn,
     gameStatus,
     error,
+    eliminatedPlayers,
     createRoom,
     joinRoom,
     startGame,
     submitWord,
     usePowerUp,
     leaveRoom,
-  } = useGameSocket(player, isOnlineMode ? gameSettings : {})
+    startGameWithCountdown,
+    countdown,
+  } = useGameSocket(player, gameSettings)
 
-  useEffect(() => {
-    setUsePowerUpHook(usePowerUp)
-  }, [usePowerUp])
+  const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
+      useLocalGame(player, gameSettings)
+
+  // Determine game mode
+  const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
+  const isOnlineMode = gameSettings.mode === "online" || gameSettings.mode === "wordmaster"
+
+  console.log("GameBoard - Game mode:", gameSettings.mode, "isLocalMode:", isLocalMode, "isOnlineMode:", isOnlineMode)
 
   // Determine active game state and players
   const activeGameState = isLocalMode
-    ? localGameState
-    : {
+      ? localGameState
+      : {
         currentWordpiece,
         timer,
         scores,
@@ -83,6 +82,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         turnOrder,
         currentTurn,
         status: gameStatus,
+        eliminatedPlayers,
       }
 
   const activePlayers = isLocalMode ? localPlayers : players
@@ -117,19 +117,19 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
   }, [])
 
   const handleUsePowerUp = useCallback(
-    (type, targetId) => {
-      if (isLocalMode) {
-        handleLocalUsePowerUp(type, targetId)
-      } else {
-        const otherPlayer = players.find((p) => p.id !== player.id)
-        if (otherPlayer) {
-          usePowerUpHook(type, otherPlayer.id)
+      (type, targetId) => {
+        if (isLocalMode) {
+          handleLocalUsePowerUp(type, targetId)
         } else {
-          usePowerUpHook(type)
+          const otherPlayer = players.find((p) => p.id !== player.id)
+          if (otherPlayer) {
+            usePowerUp(type, otherPlayer.id)
+          } else {
+            usePowerUp(type)
+          }
         }
-      }
-    },
-    [players, player.id, usePowerUpHook, isLocalMode, handleLocalUsePowerUp],
+      },
+      [players, player.id, usePowerUp, isLocalMode, handleLocalUsePowerUp],
   )
 
   // Initialize local game
@@ -253,13 +253,15 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   if (isOnlineMode && connected && gameStatus === "waiting") {
     return (
-      <OnlineWaitingRoom
-        room={room}
-        players={players}
-        gameSettings={gameSettings}
-        startGame={startGame}
-        leaveRoom={leaveRoom}
-      />
+        <OnlineWaitingRoom
+            room={room}
+            players={players}
+            gameSettings={gameSettings}
+            startGame={startGame}
+            startGameWithCountdown={startGameWithCountdown}
+            leaveRoom={leaveRoom}
+            countdown={countdown}
+        />
     )
   }
 
@@ -278,7 +280,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   const isLocalMultiplayer = gameSettings.mode === "local"
   const disableInput =
-    (!isLocalMultiplayer && currentPlayerId !== player.id) || (isOnlineMode && currentPlayerId !== player.id)
+      (!isLocalMultiplayer && currentPlayerId !== player.id) || (isOnlineMode && currentPlayerId !== player.id)
 
   const playerPowerUps = activeGameState?.powerUps[player.id] || {}
 
@@ -311,95 +313,95 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
   }
 
   return (
-    <div className="game-container py-4 relative">
-      <DamageOverlay isActive={showDamageEffect} />
+      <div className="game-container py-4 relative">
+        <DamageOverlay isActive={showDamageEffect} />
 
-      {showLeaveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-indigo-950 border border-white/20 rounded-lg p-6 max-w-md w-full shadow-2xl animate-bounce-in">
-            <h3 className="text-xl font-bold mb-4">Leave Game?</h3>
-            <p className="text-white/70 mb-6">Are you sure you want to leave the game? Your progress will be lost.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={confirmLeaveGame}
-                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition-colors"
-              >
-                Leave Game
-              </button>
-              <button
-                onClick={cancelLeaveGame}
-                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors"
-              >
-                Continue Playing
-              </button>
+        {showLeaveConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="bg-indigo-950 border border-white/20 rounded-lg p-6 max-w-md w-full shadow-2xl animate-bounce-in">
+                <h3 className="text-xl font-bold mb-4">Leave Game?</h3>
+                <p className="text-white/70 mb-6">Are you sure you want to leave the game? Your progress will be lost.</p>
+                <div className="flex gap-3">
+                  <button
+                      onClick={confirmLeaveGame}
+                      className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg font-medium transition-colors"
+                  >
+                    Leave Game
+                  </button>
+                  <button
+                      onClick={cancelLeaveGame}
+                      className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors"
+                  >
+                    Continue Playing
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={handleLeaveGame}
-            className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg text-sm font-medium transition-colors flex items-center"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-1.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Leave Game
-          </button>
-        </div>
-
-        <TimerBar
-          maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
-          timeLeft={Math.max(0, activeGameState?.timer || 0)}
-        />
-
-        <GameHeader
-          gameSettings={gameSettings}
-          isLocalMode={isLocalMode}
-          activeGameState={activeGameState}
-          player={player}
-        />
-
-        {isLocalMultiplayer && <CurrentPlayerIndicator currentPlayer={currentPlayer} players={activePlayers} />}
-
-        {isOnlineMode && <OnlineGameStatus currentTurn={currentPlayerId} player={player} players={activePlayers} />}
-
-        <div className="card p-6 mb-4">
-          <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
-          <WordInput
-            ref={wordInputRef}
-            onSubmit={handleSubmitWord}
-            disabled={disableInput}
-            wordpiece={activeGameState?.currentWordpiece}
-            currentPlayerId={currentPlayerId}
-          />
-        </div>
-
-        <WordDefinitionsPanel wordDefinitions={wordDefinitions} />
-        <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
-
-        {Object.keys(playerPowerUps).length > 0 && (
-          <PowerUpsPanel
-            playerPowerUps={playerPowerUps}
-            handleUsePowerUp={handleUsePowerUp}
-            isPlayerTurn={currentPlayerId === player.id}
-          />
         )}
+
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-end mb-4">
+            <button
+                onClick={handleLeaveGame}
+                className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-lg text-sm font-medium transition-colors flex items-center"
+            >
+              <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+              >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Leave Game
+            </button>
+          </div>
+
+          <TimerBar
+              maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
+              timeLeft={Math.max(0, activeGameState?.timer || 0)}
+          />
+
+          <GameHeader
+              gameSettings={gameSettings}
+              isLocalMode={isLocalMode}
+              activeGameState={activeGameState}
+              player={player}
+          />
+
+          {isLocalMode && <CurrentPlayerIndicator currentPlayer={currentPlayer} players={activePlayers} />}
+
+          {isOnlineMode && <OnlineGameStatus currentTurn={currentPlayerId} player={player} players={activePlayers} />}
+
+          <div className="card p-6 mb-4">
+            <WordpieceDisplay wordpiece={activeGameState?.currentWordpiece} />
+            <WordInput
+                ref={wordInputRef}
+                onSubmit={handleSubmitWord}
+                disabled={disableInput}
+                wordpiece={activeGameState?.currentWordpiece}
+                currentPlayerId={currentPlayerId}
+            />
+          </div>
+
+          <WordDefinitionsPanel wordDefinitions={wordDefinitions} />
+          <PlayersList activePlayers={activePlayers} activeGameState={activeGameState} />
+
+          {Object.keys(playerPowerUps).length > 0 && (
+              <PowerUpsPanel
+                  playerPowerUps={playerPowerUps}
+                  handleUsePowerUp={handleUsePowerUp}
+                  isPlayerTurn={currentPlayerId === player.id}
+              />
+          )}
+        </div>
       </div>
-    </div>
   )
 }
 
