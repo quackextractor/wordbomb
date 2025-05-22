@@ -1,4 +1,5 @@
 import PropTypes from "prop-types"
+import HeartIcon from "./HeartIcon"
 
 function PlayersList({ activePlayers, activeGameState }) {
     return (
@@ -35,9 +36,7 @@ function PlayersList({ activePlayers, activeGameState }) {
                                 <span className="mr-2">Score: {activeGameState?.scores[p.id] || 0}</span>
                                 <div className="flex">
                                     {Array.from({ length: activeGameState?.lives[p.id] || 3 }).map((_, i) => (
-                                        <span key={i} className="text-xs">
-                      ❤️
-                    </span>
+                                        <HeartIcon key={i} />
                                     ))}
                                 </div>
                             </div>

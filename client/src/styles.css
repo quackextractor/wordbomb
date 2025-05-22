@@ -79,6 +79,34 @@
     }
 }
 
+@keyframes damage-flash {
+    0% {
+        opacity: 0;
+    }
+    25% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes heart-loss {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.8;
+        filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8));
+    }
+    100% {
+        transform: scale(0);
+        opacity: 0;
+    }
+}
+
 .animate-pulse-custom {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -89,4 +117,12 @@
 
 .animate-slide-in {
     animation: slide-in 0.3s ease-out forwards;
+}
+
+.animate-damage-flash {
+    animation: damage-flash 0.5s ease-in-out forwards;
+}
+
+.animate-heart-loss {
+    animation: heart-loss 0.7s ease-in-out forwards;
 }

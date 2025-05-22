@@ -13,16 +13,13 @@ import GameLoading from "./GameLoading"
 import useLocalGame from "../hooks/useLocalGame"
 import WordDefinitionsPanel from "./WordDefinitionsPanel"
 import TimerBar from "./TimerBar"
+import DamageOverlay from "./DamageOverlay"
 
 function GameBoard({ player, gameSettings: initialGameSettings }) {
     const navigate = useNavigate()
     const location = useLocation()
     const wordInputRef = useRef(null)
-
-    // Use custom hook for local game logic
-    const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
-        useLocalGame(player, initialGameSettings)
-
+    const [showDamageEffect, setShowDamageEffect] = useState(false)
     const [gameSettings, setGameSettings] = useState(() => {
         const locationState = location.state || {}
         return {
@@ -30,9 +27,12 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
             ...locationState,
         }
     })
-
     const [lastSubmittedWord, setLastSubmittedWord] = useState("")
     const [wordDefinitions, setWordDefinitions] = useState([]) // [{word, definitions: []}]
+    const [prevLives, setPrevLives] = useState({})
+
+    const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
+        useLocalGame(player, gameSettings)
 
     const {
         connected,
@@ -54,6 +54,23 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         usePowerUp,
         leaveRoom,
     } = useGameSocket(player, gameSettings)
+
+    const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
+
+    const activeGameState = isLocalMode
+        ? localGameState
+        : {
+            currentWordpiece,
+            timer,
+            scores,
+            lives,
+            powerUps,
+            turnOrder,
+            currentTurn,
+            status: gameStatus,
+        }
+
+    const activePlayers = isLocalMode ? localPlayers : players
 
     const handleUsePowerUp = (type, targetId) => {
         const otherPlayer = players.find((p) => p.id !== player.id)
@@ -101,7 +118,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         if (gameSettings.isHost && gameSettings.mode === "online" && room) {
             startGame()
         }
-    }, [gameSettings.isHost, gameSettings.mode, room])
+    }, [gameSettings.isHost, gameSettings.mode, room, startGame])
 
     useEffect(() => {
         if (gameStatus === "over") {
@@ -113,30 +130,27 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                 },
             })
         }
-    }, [gameStatus])
+    }, [gameStatus, navigate, scores, gameSettings.roomId, gameSettings.mode])
 
-    // Clear used words on game start
     useEffect(() => {
         if (wordInputRef.current && typeof wordInputRef.current.clearUsedWords === "function") {
             wordInputRef.current.clearUsedWords()
         }
     }, [startGame])
 
-    // Use localGameState/localPlayers from hook
-    const isLocalMode = gameSettings.mode === "single" || gameSettings.mode === "local"
-    const activeGameState = isLocalMode
-        ? localGameState
-        : {
-            currentWordpiece,
-            timer,
-            scores,
-            lives,
-            powerUps,
-            turnOrder,
-            currentTurn,
-            status: gameStatus,
+    useEffect(() => {
+        if (!activeGameState?.lives || !player?.id) return
+
+        const currentLives = activeGameState.lives[player.id] || 3
+        const previousLives = prevLives[player.id] || currentLives
+
+        if (currentLives < previousLives) {
+            setShowDamageEffect(true)
+            setTimeout(() => setShowDamageEffect(false), 500)
         }
-    const activePlayers = isLocalMode ? localPlayers : players
+
+        setPrevLives(activeGameState.lives)
+    }, [activeGameState?.lives, player?.id, prevLives])
 
     if (!connected && !isLocalMode) {
         return <GameLoading message="Connecting to game server..." error={error} />
@@ -164,13 +178,11 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     const playerLives = activeGameState?.lives[player.id] || 3
     const playerPowerUps = activeGameState?.powerUps[player.id] || {}
 
-    // Fetch definitions from Datamuse API (async, non-blocking)
     async function fetchDefinitions(word) {
         try {
             const response = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`)
             const data = await response.json()
             if (data && data[0] && Array.isArray(data[0].defs) && data[0].defs.length > 0) {
-                // Up to 3 definitions
                 return data[0].defs.slice(0, 3).map((def) => def.replace(/^\w+\t/, ""))
             }
         } catch (e) {
@@ -179,7 +191,6 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
         return []
     }
 
-    // When a word is submitted, fetch its definition in the background
     const handleSubmitWord = (word) => {
         if (isLocalMode) {
             handleLocalSubmitWord(word)
@@ -187,18 +198,18 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
             submitWord(word)
         }
         setLastSubmittedWord(word)
-        // Fetch definition async, update state when done
         fetchDefinitions(word).then((defs) => {
             setWordDefinitions((prev) => {
-                // Allow up to 4 words in the panel
                 const newDefs = [{ word, definitions: defs.length ? defs : [] }, ...prev.filter((wd) => wd.word !== word)]
-                return newDefs.slice(0, 4) // keep only last 4
+                return newDefs.slice(0, 4)
             })
         })
     }
 
     return (
-        <div className="game-container py-4">
+        <div className="game-container py-4 relative">
+            <DamageOverlay isActive={showDamageEffect} />
+
             <div className="max-w-5xl mx-auto">
                 <TimerBar
                     maxTime={activeGameState?.maxTurnTimeForTurn || (gameSettings.mode === "wordmaster" ? 30 : 15)}
@@ -229,7 +240,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
                 {Object.keys(playerPowerUps).length > 0 && (
                     <PowerUpsPanel
                         playerPowerUps={playerPowerUps}
-                        handleUsePowerUp={handleUsePowerUp}
+                        handleUsePowerUp={isLocalMode ? handleLocalUsePowerUp : handleUsePowerUp}
                         isPlayerTurn={isPlayerTurn}
                     />
                 )}

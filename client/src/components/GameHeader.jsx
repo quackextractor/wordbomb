@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react"
 import PropTypes from "prop-types"
+import HeartIcon from "./HeartIcon"
 
 function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
     const [prevScore, setPrevScore] = useState(playerScore)
     const [scoreAnim, setScoreAnim] = useState(false)
     const [prevLives, setPrevLives] = useState(playerLives)
     const [lifeAnim, setLifeAnim] = useState(false)
+    const [animatingHeartIndex, setAnimatingHeartIndex] = useState(-1)
 
     // Score animation
     useEffect(() => {
@@ -16,16 +18,21 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
             setTimeout(() => setScoreAnim(false), 700)
         }
         setPrevScore(playerScore)
-    }, [playerScore])
+    }, [playerScore, prevScore])
 
     // Health animation
     useEffect(() => {
         if (playerLives < prevLives) {
             setLifeAnim(true)
-            setTimeout(() => setLifeAnim(false), 700)
+            // Set the index of the heart that's being lost
+            setAnimatingHeartIndex(playerLives)
+            setTimeout(() => {
+                setLifeAnim(false)
+                setAnimatingHeartIndex(-1)
+            }, 700)
         }
         setPrevLives(playerLives)
-    }, [playerLives])
+    }, [playerLives, prevLives])
 
     return (
         <div className="bg-black/20 backdrop-blur-sm rounded-lg p-3 mb-4 flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -41,13 +48,9 @@ function GameHeader({ gameSettings, isLocalMode, playerScore, playerLives }) {
                 </div>
                 <div className="flex">
                     {Array.from({ length: playerLives }).map((_, i) => (
-                        <span
-                            key={i}
-                            className={`text-xl ${lifeAnim && i === playerLives - 1 ? "animate-pulse-custom text-red-500" : ""}`}
-                        >
-              ❤️
-            </span>
+                        <HeartIcon key={i} isAnimating={i === animatingHeartIndex} />
                     ))}
+                    {lifeAnim && <HeartIcon key="lost-heart" isAnimating={true} />}
                 </div>
             </div>
         </div>
