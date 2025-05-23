@@ -45,6 +45,7 @@ function AvatarCanvas({onAvatarCreated}) {
     const [lineThickness, setLineThickness] = useState(5)
     const [selectedDefault, setSelectedDefault] = useState("circle")
     const [defaultColor, setDefaultColor] = useState("#4287f5")
+    const [isDraggingOver, setIsDraggingOver] = useState(false); // New state for drag feedback
     const prevPos = useRef({x: 0, y: 0})
 
     const generateRandomColor = () => {
@@ -73,6 +74,37 @@ function AvatarCanvas({onAvatarCreated}) {
         const canvas = canvasRef.current
         const dataUrl = canvas.toDataURL("image/png")
         onAvatarCreated?.(dataUrl)
+    }
+
+    const processImageFile = (file) => {
+        if (!file || !file.type.startsWith("image/")) {
+            console.warn("Attempted to load non-image file or no file.");
+            return;
+        }
+
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            const img = new Image()
+            img.onload = () => {
+                const canvas = canvasRef.current
+                const ctx = canvas.getContext("2d")
+                ctx.fillStyle = "#ffffff" // Clear canvas before drawing new image
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                const scale = Math.min(
+                    canvas.width / img.width,
+                    canvas.height / img.height
+                )
+                const width = img.width * scale
+                const height = img.height * scale
+                const x = (canvas.width - width) / 2
+                const y = (canvas.height - height) / 2
+                ctx.drawImage(img, x, y, width, height)
+                setHasDrawn(true)
+                saveAvatar()
+            }
+            img.src = event.target.result
+        }
+        reader.readAsDataURL(file)
     }
 
     const startDrawing = (e) => {
@@ -125,49 +157,60 @@ function AvatarCanvas({onAvatarCreated}) {
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0]
-        if (!file) return
-
-        const reader = new FileReader()
-        reader.onload = (event) => {
-            const img = new Image()
-            img.onload = () => {
-                const canvas = canvasRef.current
-                const ctx = canvas.getContext("2d")
-                ctx.fillStyle = "#ffffff"
-                ctx.fillRect(0, 0, canvas.width, canvas.height)
-                const scale = Math.min(
-                    canvas.width / img.width,
-                    canvas.height / img.height
-                )
-                const width = img.width * scale
-                const height = img.height * scale
-                const x = (canvas.width - width) / 2
-                const y = (canvas.height - height) / 2
-                ctx.drawImage(img, x, y, width, height)
-                setHasDrawn(true)
-                saveAvatar()
-            }
-            img.src = event.target.result
+        if (file) {
+            processImageFile(file)
         }
-        reader.readAsDataURL(file)
     }
+
+    const handleDragOver = (e) => {
+        e.preventDefault(); // Necessary to allow dropping
+        setIsDraggingOver(true); // Set dragging over state
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setIsDraggingOver(false); // Clear dragging over state
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDraggingOver(false); // Clear dragging over state
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            processImageFile(file);
+        }
+    };
 
     return (
         <div className="flex flex-col items-center gap-6 p-4 bg-gray-800/20 backdrop-blur-sm rounded-lg">
-            <div className="relative">
+            <div className="relative"> {/* Ensure this parent is relative for absolute positioning of the overlay */}
                 <canvas
                     ref={canvasRef}
                     width={300}
                     height={300}
-                    className="rounded-lg border-2 border-gray-700 shadow-xl cursor-crosshair touch-none bg-white"
+                    className={`rounded-lg border-2 shadow-xl cursor-crosshair touch-none bg-white ${isDraggingOver ? 'border-blue-500' : 'border-gray-700'}`}
                     onMouseDown={startDrawing}
                     onMouseMove={draw}
                     onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
+                    onMouseLeave={(e) => { stopDrawing(e); setIsDraggingOver(false);}}
                     onTouchStart={(e) => startDrawing(e.touches[0])}
                     onTouchMove={(e) => draw(e.touches[0])}
                     onTouchEnd={stopDrawing}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                 />
+                {/* Drag and Drop Overlay */}
+                {isDraggingOver && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-lg pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" x2="12" y1="3" y2="15"/>
+                        </svg>
+                        <p className="text-white text-lg mt-2">Drop image here</p>
+                    </div>
+                )}
                 <div className="absolute inset-0 rounded-lg pointer-events-none border border-gray-600/50"/>
             </div>
 
@@ -212,17 +255,18 @@ function AvatarCanvas({onAvatarCreated}) {
                     />
                 </div>
 
-                <select
-                    value={selectedDefault}
-                    onChange={(e) => setSelectedDefault(e.target.value)}
-                    className="px-3 py-2 bg-gray-700/50 text-white rounded-md border-2 border-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
-                >
-                    <option value="circle">Circle</option>
-                    <option value="square">Square</option>
-                    <option value="triangle">Triangle</option>
-                </select>
+                <div className="flex gap-2 items-center p-2 bg-black/20 rounded-lg"> {/* Grouping for shape, import, clear */}
+                    <select
+                        value={selectedDefault}
+                        onChange={(e) => setSelectedDefault(e.target.value)}
+                        className="px-3 py-2 bg-gray-700/50 text-white rounded-md border-2 border-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    >
+                        <option value="circle">Circle</option>
+                        <option value="square">Square</option>
+                        <option value="triangle">Triangle</option>
+                    </select>
 
-                <div className="flex gap-2 items-center">
+                    {/* Keep input for file dialog, but it's hidden */}
                     <input
                         type="file"
                         accept="image/*"
