@@ -83,6 +83,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
           status: gameStatus,
           eliminatedPlayers,
           maxTurnTimeForTurn: gameSettings.mode === "wordmaster" ? 30 : 15,
+          usedWords: currentWordpiece ? room?.usedWords || [] : [],
         }
 
     // Store reference for comparison
@@ -101,6 +102,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     gameStatus,
     eliminatedPlayers,
     gameSettings.mode,
+    room?.usedWords,
   ])
 
   const activePlayers = useMemo(() => {
@@ -142,18 +144,23 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
       } else {
         const otherPlayer = players.find((p) => p.id !== player.id)
         if (otherPlayer) {
-          usePowerUp(type, otherPlayer.id)
+          usePowerUpHook(type, otherPlayer.id)
         } else {
-          usePowerUp(type)
+          usePowerUpHook(type)
         }
       }
     },
-    [players, player.id, usePowerUp, isLocalMode, handleLocalUsePowerUp],
+    [players, player.id, usePowerUpHook, isLocalMode, handleLocalUsePowerUp],
   )
 
-  useEffect(() => {
+  // Initialize usePowerUpHook
+  const initializeUsePowerUpHook = useCallback(() => {
     setUsePowerUpHook(usePowerUp)
   }, [usePowerUp])
+
+  useEffect(() => {
+    initializeUsePowerUpHook()
+  }, [initializeUsePowerUpHook])
 
   // Initialize local game
   useEffect(() => {
@@ -275,6 +282,21 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
     prevLivesRef.current = { ...currentLives }
   }, [activeGameState?.lives, player?.id])
+
+  // Update the useEffect hook that handles word definitions
+  useEffect(() => {
+    // Update wordDefinitions when a new definition is received
+    if (localGameState?.definition) {
+      setWordDefinitions((prev) => {
+        const newDef = {
+          word: localGameState.definition.word,
+          definitions: localGameState.definition.definitions || [],
+        }
+
+        return [newDef, ...prev.filter((wd) => wd.word !== newDef.word)].slice(0, 4) // Keep only the 4 most recent definitions
+      })
+    }
+  }, [localGameState?.definition])
 
   // Show loading states
   if (isOnlineMode && connecting) {
@@ -404,6 +426,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
             disabled={disableInput}
             wordpiece={activeGameState.currentWordpiece}
             currentPlayerId={currentPlayerId}
+            usedWords={activeGameState.usedWords} // Pass used words from game state
           />
         </div>
 

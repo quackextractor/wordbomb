@@ -224,6 +224,7 @@ io.on("connection", (socket) => {
               currentTurn: newState.currentTurn,
               lives: newState.lives,
               eliminatedPlayers: newState.eliminatedPlayers,
+              usedWords: newState.usedWords, // Include used words in the update
             })
           }
 
@@ -311,11 +312,13 @@ io.on("connection", (socket) => {
             const newState = room.nextTurn()
 
             if (newState.gameOver) {
-              // Game is over, send game over event
-              io.to(roomId).emit("game:over", {
-                finalScores: newState.finalScores,
-                winner: newState.winner,
-              })
+              // Game is over, send game over event with a slight delay to ensure clients receive it
+              setTimeout(() => {
+                io.to(roomId).emit("game:over", {
+                  finalScores: newState.finalScores,
+                  winner: newState.winner,
+                })
+              }, 500)
               console.log(`Game over in room ${roomId}, winner: ${newState.winner || "none"}`)
             } else {
               // Send new wordpiece to all clients
@@ -325,6 +328,7 @@ io.on("connection", (socket) => {
                 currentTurn: newState.currentTurn,
                 lives: newState.lives,
                 eliminatedPlayers: newState.eliminatedPlayers,
+                usedWords: newState.usedWords, // Include used words in the update
               })
             }
           }

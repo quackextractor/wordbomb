@@ -11,7 +11,7 @@ class GameRoom {
     this.currentWordpiece = null
     this.currentTurn = null
     this.turnOrder = []
-    this.usedWords = new Set()
+    this.usedWords = new Set() // This will now be used to track words used in the current turn
     this.scores = {}
     this.lives = {}
     this.powerUps = {}
@@ -63,7 +63,7 @@ class GameRoom {
       powerUps: this.powerUps,
       turnOrder: this.turnOrder,
       currentTurn: this.currentTurn,
-      usedWords: Array.from(this.usedWords),
+      usedWords: Array.from(this.usedWords), // Send the current set of used words
       eliminatedPlayers: Array.from(this.eliminatedPlayers),
     }
   }
@@ -270,7 +270,7 @@ class GameRoom {
 
     // Generate new wordpiece
     this.currentWordpiece = generateWordpiece()
-    this.usedWords.clear()
+    this.usedWords.clear() // Clear used words for the new turn
 
     // Start new turn timer
     this.startTurnTimer()
@@ -281,6 +281,7 @@ class GameRoom {
       currentTurn: this.currentTurn,
       lives: this.lives,
       eliminatedPlayers: Array.from(this.eliminatedPlayers),
+      usedWords: Array.from(this.usedWords), // Include empty used words array
     }
   }
 

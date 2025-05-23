@@ -334,6 +334,7 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
           currentTurn: data.currentTurn,
           lives: data.lives,
           eliminatedPlayers: data.eliminatedPlayers,
+          usedWords: data.usedWords || new Set(), // Update used words from server
         })
 
         // Start a fresh timer with the full time
