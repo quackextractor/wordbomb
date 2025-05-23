@@ -266,16 +266,45 @@ io.on("connection", (socket) => {
   })
 
   // Request word definition
-  socket.on("game:request_definition", ({ roomId, word }) => {
+  socket.on("game:request_definition", async ({ roomId, word }) => {
     const room = gameRooms.get(roomId)
     if (room) {
-      const definition = wordManager.getDefinition(word)
-
-      // Send definition to all clients in the room
-      io.to(roomId).emit("game:definition", {
+      // Use the same async definition fetching as in submitWord
+      const definitions = await room.fetchDefinition(word)
+      const definition = {
         word,
-        definition,
-      })
+        definitions: definitions || [],
+      }
+      // Send definition to all clients in the room
+      io.to(roomId).emit("game:definition", definition)
+    } else {
+      // Fallback to wordManager if no room
+      const definition = wordManager.getDefinition(word)
+      io.to(roomId).emit("game:definition", definition)
+    }
+  })
+
+  // Optionally, add a handler for explicit timeout simulation (for debugging or client-side timeout triggers)
+  socket.on("game:timeout", ({ roomId }) => {
+    const room = gameRooms.get(roomId)
+    if (room && room.gameInProgress) {
+      const newState = room.handleTimeout()
+      if (newState && newState.gameOver) {
+        io.to(roomId).emit("game:over", {
+          finalScores: newState.finalScores,
+          winner: newState.winner,
+        })
+        console.log(`Game over in room ${roomId} (timeout), winner: ${newState.winner || "none"}`)
+      } else if (newState) {
+        io.to(roomId).emit("game:new_wordpiece", {
+          wordpiece: newState.wordpiece,
+          timer: newState.timer,
+          currentTurn: newState.currentTurn,
+          lives: newState.lives,
+          eliminatedPlayers: newState.eliminatedPlayers,
+          usedWords: newState.usedWords,
+        })
+      }
     }
   })
 

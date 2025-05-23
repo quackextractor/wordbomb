@@ -218,7 +218,7 @@ class GameRoom {
   }
 
   handleTimeout() {
-    if (!this.gameInProgress) return
+    if (!this.gameInProgress) return null
 
     console.log(`Handling timeout for player ${this.currentTurn}`)
 
@@ -252,12 +252,17 @@ class GameRoom {
 
     // Check if game is over (only one or zero players left)
     if (this.turnOrder.length <= 1) {
-      console.log("Game over condition met: only one or zero players left")
       this.endGame()
       return {
         gameOver: true,
-        finalScores: this.scores,
+        finalScores: { ...this.scores },
         winner: this.turnOrder.length === 1 ? this.turnOrder[0] : null,
+        wordpiece: this.currentWordpiece,
+        timer: 0,
+        currentTurn: null,
+        lives: { ...this.lives },
+        eliminatedPlayers: Array.from(this.eliminatedPlayers),
+        usedWords: Array.from(this.usedWords),
       }
     }
 
@@ -276,12 +281,13 @@ class GameRoom {
     this.startTurnTimer()
 
     return {
+      gameOver: false,
       wordpiece: this.currentWordpiece,
       timer: this.turnTime,
       currentTurn: this.currentTurn,
-      lives: this.lives,
+      lives: { ...this.lives },
       eliminatedPlayers: Array.from(this.eliminatedPlayers),
-      usedWords: Array.from(this.usedWords), // Include empty used words array
+      usedWords: Array.from(this.usedWords),
     }
   }
 
