@@ -77,7 +77,7 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
       () => {
         if (timerIntervalRef.current) {
           console.log("Safety cleanup of timer")
-          stopClientTimer()
+         // stopClientTimer()
         }
       },
       (validInitialTime + 2) * 1000,
