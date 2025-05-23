@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 
 function TimerBar({ maxTime, timeLeft }) {
   const [displayTime, setDisplayTime] = useState(timeLeft)
-  const [isWarning, setIsWarning] = useState(false)
 
   // Smooth timer updates and validation
   useEffect(() => {
@@ -14,7 +13,6 @@ function TimerBar({ maxTime, timeLeft }) {
     const validTimeLeft = Math.max(0, Math.min(validMaxTime, timeLeft || 0))
 
     setDisplayTime(validTimeLeft)
-    setIsWarning(validTimeLeft <= validMaxTime * 0.3) // Warning at 30% remaining
   }, [timeLeft, maxTime])
 
   let percent = displayTime <= 0 ? 0 : (displayTime / (maxTime || 15)) * 100
@@ -46,11 +44,6 @@ function TimerBar({ maxTime, timeLeft }) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      {isWarning && (
-        <div className="text-center mt-1">
-          <span className="text-xs text-red-300 animate-pulse">⚠️ Time running out!</span>
-        </div>
-      )}
     </div>
   )
 }
