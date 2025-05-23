@@ -343,26 +343,26 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
 
         if (res.definition) {
           const definitionWord = res.definition.word || res.word;
-          const finalDefinitionObject = {
+          const newDefinitionObject = {
             word: definitionWord,
             definitions: res.definition.definitions && res.definition.definitions.length > 0
               ? res.definition.definitions
               : [`Definition for ${definitionWord}`],
           };
 
-          if (setWordDefinitions) {
-            setWordDefinitions(finalDefinitionObject); // Update parent state
-          }
-          
-          setDefinition(finalDefinitionObject); // Update local state
+          setDefinition(newDefinitionObject); // Update local 'latest definition'
 
-          setWordDefinitionsList((prev) => {
-            const newDefs = [
-              finalDefinitionObject,
-              ...prev.filter((wd) => wd.word !== finalDefinitionObject.word),
-            ].slice(0, 4)
-            return newDefs
-          })
+          setWordDefinitionsList((prevList) => {
+            const updatedList = [
+              newDefinitionObject,
+              ...(prevList || []).filter((wd) => wd.word !== newDefinitionObject.word),
+            ].slice(0, 4);
+            
+            if (setWordDefinitions) { // setWordDefinitions is a PROP from parent
+              setWordDefinitions(updatedList); // Update parent with the new LIST
+            }
+            return updatedList; // Return new list for local state
+          });
         }
       },
 
@@ -432,17 +432,26 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
       "game:definition": (data) => { // data is assumed to be { word: string, definitions: string[] }
         console.log("Definition received:", data)
         if (data && data.word) {
-          const finalDefinitionObject = {
+          const newDefinitionObject = {
             word: data.word,
             definitions: data.definitions && data.definitions.length > 0
               ? data.definitions
               : [`Definition for ${data.word}`],
           };
 
-          if (setWordDefinitions) {
-            setWordDefinitions(finalDefinitionObject); // Update parent state
-          }
-          setDefinition(finalDefinitionObject); // Update local state
+          setDefinition(newDefinitionObject); // Update local 'latest definition'
+
+          setWordDefinitionsList((prevList) => {
+            const updatedList = [
+              newDefinitionObject,
+              ...(prevList || []).filter((wd) => wd.word !== newDefinitionObject.word),
+            ].slice(0, 4);
+
+            if (setWordDefinitions) { // setWordDefinitions is a PROP from parent
+              setWordDefinitions(updatedList); // Update parent with the new LIST
+            }
+            return updatedList; // Return new list for local state
+          });
         } else {
           console.warn("Received game:definition event with invalid data:", data);
         }
