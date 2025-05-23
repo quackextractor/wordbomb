@@ -135,18 +135,6 @@ function Lobby({player, setPlayer}) {
 
                 <div className="mb-8">
                     <h2 className="text-xl font-semibold mb-4 text-center">Create Your Avatar</h2>
-                    <div className="flex items-center justify-center mb-4">
-                        <label htmlFor="avatar-color" className="mr-3 text-white/80">
-                            Avatar Color:
-                        </label>
-                        <input
-                            type="color"
-                            id="avatar-color"
-                            value={avatarColor}
-                            onChange={handleColorChange}
-                            className="w-10 h-10 rounded-full overflow-hidden cursor-pointer border-2 border-white/20"
-                        />
-                    </div>
                     <div className="flex justify-center">
                         <AvatarCanvas color={avatarColor} onAvatarCreated={handleAvatarCreated}/>
                     </div>

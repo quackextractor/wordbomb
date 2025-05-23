@@ -248,18 +248,6 @@ function LocalMultiplayerSetup({player, setGameSettings}) {
                                     </div>
 
                                     <div className="flex flex-col items-center">
-                                        <div className="flex items-center justify-center mb-2">
-                                            <label htmlFor={`color-${index}`} className="mr-3 text-white/80">
-                                                Avatar Color:
-                                            </label>
-                                            <input
-                                                type="color"
-                                                id={`color-${index}`}
-                                                value={player.color}
-                                                onChange={(e) => handleColorChange(index, e.target.value)}
-                                                className="w-10 h-10 rounded-full overflow-hidden cursor-pointer border-2 border-white/20"
-                                            />
-                                        </div>
                                         <AvatarCanvas
                                             color={player.color}
                                             initialAvatar={player.avatar}
