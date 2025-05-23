@@ -59,6 +59,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
     leaveRoom,
     startGameWithCountdown,
     countdown,
+    usedWords, // <-- add this from useGameSocket
   } = useGameSocket(player, gameSettings, setWordDefinitions) // Pass setWordDefinitions
 
   const { localGameState, localPlayers, initializeLocalGame, handleLocalSubmitWord, handleLocalUsePowerUp } =
@@ -83,7 +84,7 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
           status: gameStatus,
           eliminatedPlayers,
           maxTurnTimeForTurn: gameSettings.mode === "wordmaster" ? 30 : 15,
-          usedWords: currentWordpiece ? room?.usedWords || [] : [],
+          usedWords: usedWords, // Use the usedWords state directly
         }
 
     // Store reference for comparison

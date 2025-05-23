@@ -23,6 +23,7 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
   const [countdown, setCountdown] = useState(null)
   const [eliminatedPlayers, setEliminatedPlayers] = useState([])
   const [wordDefinitionsList, setWordDefinitionsList] = useState([])
+  const [usedWords, setUsedWords] = useState([])
 
   // Timer management refs
   const timerIntervalRef = useRef(null)
@@ -323,21 +324,15 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
 
       "game:new_wordpiece": (data) => {
         console.log("New wordpiece received:", data)
-
-        // Stop any existing timer first
         stopClientTimer()
-
-        // Update state with new data
         updateGameState({
           wordpiece: data.wordpiece,
           timer: data.timer,
           currentTurn: data.currentTurn,
           lives: data.lives,
           eliminatedPlayers: data.eliminatedPlayers,
-          usedWords: data.usedWords || new Set(), // Update used words from server
         })
-
-        // Start a fresh timer with the full time
+        setUsedWords(Array.isArray(data.usedWords) ? data.usedWords : [])
         startClientTimer(data.timer)
       },
 
@@ -346,8 +341,10 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
         updateGameState({
           scores: res.scores,
         })
-
-        // Add the word and definition to the definitions list
+        setUsedWords(prev => {
+          if (!prev.includes(res.word)) return [...prev, res.word]
+          return prev
+        })
         if (res.definition && setWordDefinitions) {
           setDefinition(res.definition)
 

@@ -169,7 +169,7 @@ class GameRoom {
   startGame(mode) {
     this.gameInProgress = true
     this.gameMode = mode
-    this.usedWords.clear()
+    this.usedWords.clear() // Clear at the start of the game only
     this.currentWordpiece = generateWordpiece()
     this.eliminatedPlayers.clear()
 
@@ -242,12 +242,70 @@ class GameRoom {
         this.turnOrder = this.turnOrder.filter((id) => id !== this.currentTurn)
       }
     }
-    // Move to next turn
-    const turnResult = this.nextTurn()
+    // Move to next turn, but do NOT generate a new wordpiece
+    const turnResult = this.advanceTurnWithoutNewWordpiece()
     if (this.onTurnAdvanced && turnResult) {
       this.onTurnAdvanced(turnResult)
     }
     return turnResult
+  }
+
+  // Advance turn without generating a new wordpiece (for timeout)
+  advanceTurnWithoutNewWordpiece() {
+    if (!this.gameInProgress) return null
+
+    // Clear turn timer
+    if (this.turnTimer) {
+      clearTimeout(this.turnTimer)
+      this.turnTimer = null
+    }
+
+    // Check if game is over (only one or zero players left)
+    if (this.turnOrder.length <= 1) {
+      this.endGame()
+      const result = {
+        gameOver: true,
+        finalScores: { ...this.scores },
+        winner: this.turnOrder.length === 1 ? this.turnOrder[0] : null,
+        wordpiece: this.currentWordpiece,
+        timer: 0,
+        currentTurn: null,
+        lives: { ...this.lives },
+        eliminatedPlayers: Array.from(this.eliminatedPlayers),
+        usedWords: Array.from(this.usedWords),
+      }
+      if (this.onTurnAdvanced) {
+        this.onTurnAdvanced(result)
+      }
+      return result
+    }
+
+    // Get next player
+    const currentIndex = this.turnOrder.indexOf(this.currentTurn)
+    const nextIndex = (currentIndex + 1) % this.turnOrder.length
+    this.currentTurn = this.turnOrder[nextIndex]
+
+    console.log(`Moving to next turn (timeout), player ${this.currentTurn}`)
+
+    // Do NOT generate a new wordpiece here
+    // this.usedWords.clear() // Clear used words for the new turn
+
+    // Start new turn timer
+    this.startTurnTimer()
+
+    const result = {
+      gameOver: false,
+      wordpiece: this.currentWordpiece, // Keep the same wordpiece
+      timer: this.turnTime,
+      currentTurn: this.currentTurn,
+      lives: { ...this.lives },
+      eliminatedPlayers: Array.from(this.eliminatedPlayers),
+      usedWords: Array.from(this.usedWords),
+    }
+    if (this.onTurnAdvanced) {
+      this.onTurnAdvanced(result)
+    }
+    return result
   }
 
   nextTurn() {
@@ -288,7 +346,7 @@ class GameRoom {
 
     // Generate new wordpiece
     this.currentWordpiece = generateWordpiece()
-    this.usedWords.clear() // Clear used words for the new turn
+    // this.usedWords.clear() // Clear used words for the new turn
 
     // Start new turn timer
     this.startTurnTimer()
