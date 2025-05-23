@@ -340,19 +340,27 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
           if (!prev.includes(res.word)) return [...prev, res.word]
           return prev
         })
-        if (res.definition && setWordDefinitions) {
-          setDefinition(res.definition)
 
-          // Update word definitions list with the server-provided definition
+        if (res.definition) {
+          const definitionWord = res.definition.word || res.word;
+          const finalDefinitionObject = {
+            word: definitionWord,
+            definitions: res.definition.definitions && res.definition.definitions.length > 0
+              ? res.definition.definitions
+              : [`Definition for ${definitionWord}`],
+          };
+
+          if (setWordDefinitions) {
+            setWordDefinitions(finalDefinitionObject); // Update parent state
+          }
+          
+          setDefinition(finalDefinitionObject); // Update local state
+
           setWordDefinitionsList((prev) => {
             const newDefs = [
-              {
-                word: res.word,
-                definitions: res.definition.definitions || [],
-              },
-              ...prev.filter((wd) => wd.word !== res.word),
+              finalDefinitionObject,
+              ...prev.filter((wd) => wd.word !== finalDefinitionObject.word),
             ].slice(0, 4)
-
             return newDefs
           })
         }
@@ -421,9 +429,23 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
         }, 200)
       },
 
-      "game:definition": (data) => {
+      "game:definition": (data) => { // data is assumed to be { word: string, definitions: string[] }
         console.log("Definition received:", data)
-        setDefinition(data)
+        if (data && data.word) {
+          const finalDefinitionObject = {
+            word: data.word,
+            definitions: data.definitions && data.definitions.length > 0
+              ? data.definitions
+              : [`Definition for ${data.word}`],
+          };
+
+          if (setWordDefinitions) {
+            setWordDefinitions(finalDefinitionObject); // Update parent state
+          }
+          setDefinition(finalDefinitionObject); // Update local state
+        } else {
+          console.warn("Received game:definition event with invalid data:", data);
+        }
       },
     }
 
@@ -433,7 +455,7 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
       Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn))
       socket.off("error")
     }
-  }, [updateGameState, stopClientTimer, gameStatus])
+  }, [updateGameState, stopClientTimer, gameStatus, setWordDefinitions, setDefinition]) // Added setWordDefinitions and setDefinition to dependency array
 
   const createRoom = useCallback(
     async (mode) => {

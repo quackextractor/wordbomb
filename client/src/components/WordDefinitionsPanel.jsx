@@ -4,29 +4,42 @@ import { useRef, useEffect, useState } from "react"
 import PropTypes from "prop-types"
 
 function WordDefinitionsPanel({ wordDefinitions }) {
-  const [displayedDefs, setDisplayedDefs] = useState(wordDefinitions)
-  const [isShifting, setIsShifting] = useState(false)
-  const listRef = useRef(null)
-  const prevWords = useRef(wordDefinitions.map((wd) => wd.word))
+  // Ensure wordDefinitions is an array for consistent handling
+  const definitionsArray = Array.isArray(wordDefinitions)
+    ? wordDefinitions
+    : wordDefinitions && typeof wordDefinitions === 'object'
+    ? [wordDefinitions]
+    : [];
+
+  const [displayedDefs, setDisplayedDefs] = useState(definitionsArray);
+  const [isShifting, setIsShifting] = useState(false);
+  const listRef = useRef(null);
+  // Initialize prevWords based on the (potentially empty) definitionsArray
+  const prevWords = useRef(definitionsArray.map((wd) => wd.word));
 
   useEffect(() => {
-    // If a new word is added and panel is full, animate out the last card, then shift
+    const currentDefsArray = Array.isArray(wordDefinitions)
+      ? wordDefinitions
+      : wordDefinitions && typeof wordDefinitions === 'object'
+      ? [wordDefinitions]
+      : [];
+
     if (
-      wordDefinitions.length > 0 &&
+      currentDefsArray.length > 0 &&
       displayedDefs.length > 0 &&
-      (wordDefinitions.length !== displayedDefs.length || wordDefinitions[0].word !== prevWords.current[0])
+      (currentDefsArray.length !== displayedDefs.length ||
+        (currentDefsArray[0] && prevWords.current[0] && currentDefsArray[0].word !== prevWords.current[0]))
     ) {
-      setIsShifting(true)
-      // Wait for fade-out animation (300ms), then update displayedDefs
+      setIsShifting(true);
       setTimeout(() => {
-        setDisplayedDefs(wordDefinitions)
-        setIsShifting(false)
-      }, 300)
+        setDisplayedDefs(currentDefsArray);
+        setIsShifting(false);
+      }, 300);
     } else {
-      setDisplayedDefs(wordDefinitions)
+      setDisplayedDefs(currentDefsArray);
     }
-    prevWords.current = wordDefinitions.map((wd) => wd.word)
-  }, [wordDefinitions])
+    prevWords.current = currentDefsArray.map((wd) => wd.word);
+  }, [wordDefinitions, displayedDefs.length]); // Added displayedDefs.length to dependencies
 
   return (
     <div className="card p-4 mb-4">
