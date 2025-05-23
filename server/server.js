@@ -103,6 +103,25 @@ io.on("connection", (socket) => {
     // Create room if it doesn't exist and player is host
     if (!gameRooms.has(roomId) && isHost) {
       const newRoom = new GameRoom(roomId, wordManager)
+      // Set up turn advancement callback for this room
+      newRoom.setTurnAdvancedCallback((turnState) => {
+        if (turnState.gameOver) {
+          io.to(roomId).emit("game:over", {
+            finalScores: turnState.finalScores,
+            winner: turnState.winner,
+          })
+          console.log(`Game over in room ${roomId}, winner: ${turnState.winner || "none"}`)
+        } else {
+          io.to(roomId).emit("game:new_wordpiece", {
+            wordpiece: turnState.wordpiece,
+            timer: turnState.timer,
+            currentTurn: turnState.currentTurn,
+            lives: turnState.lives,
+            eliminatedPlayers: turnState.eliminatedPlayers,
+            usedWords: turnState.usedWords,
+          })
+        }
+      })
       gameRooms.set(roomId, newRoom)
       console.log(`Created new room: ${roomId}`)
     }

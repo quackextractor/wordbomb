@@ -22,6 +22,7 @@ class GameRoom {
     this.eliminatedPlayers = new Set() // Track eliminated players
     this.wordList = new Set() // Store loaded words
     this.loadWords() // Load words on initialization
+    this.onTurnAdvanced = null // Callback for turn advancement
   }
 
   // Load words from file
@@ -217,6 +218,11 @@ class GameRoom {
     }, this.turnTime * 1000)
   }
 
+  // Set the callback for turn advancement
+  setTurnAdvancedCallback(callback) {
+    this.onTurnAdvanced = callback
+  }
+
   handleTimeout() {
     if (!this.gameInProgress) return null
 
@@ -236,9 +242,12 @@ class GameRoom {
         this.turnOrder = this.turnOrder.filter((id) => id !== this.currentTurn)
       }
     }
-
     // Move to next turn
-    return this.nextTurn()
+    const turnResult = this.nextTurn()
+    if (this.onTurnAdvanced && turnResult) {
+      this.onTurnAdvanced(turnResult)
+    }
+    return turnResult
   }
 
   nextTurn() {
@@ -253,7 +262,7 @@ class GameRoom {
     // Check if game is over (only one or zero players left)
     if (this.turnOrder.length <= 1) {
       this.endGame()
-      return {
+      const result = {
         gameOver: true,
         finalScores: { ...this.scores },
         winner: this.turnOrder.length === 1 ? this.turnOrder[0] : null,
@@ -264,6 +273,10 @@ class GameRoom {
         eliminatedPlayers: Array.from(this.eliminatedPlayers),
         usedWords: Array.from(this.usedWords),
       }
+      if (this.onTurnAdvanced) {
+        this.onTurnAdvanced(result)
+      }
+      return result
     }
 
     // Get next player
@@ -280,7 +293,7 @@ class GameRoom {
     // Start new turn timer
     this.startTurnTimer()
 
-    return {
+    const result = {
       gameOver: false,
       wordpiece: this.currentWordpiece,
       timer: this.turnTime,
@@ -289,6 +302,10 @@ class GameRoom {
       eliminatedPlayers: Array.from(this.eliminatedPlayers),
       usedWords: Array.from(this.usedWords),
     }
+    if (this.onTurnAdvanced) {
+      this.onTurnAdvanced(result)
+    }
+    return result
   }
 
   // Enhanced word validation using the same logic as client
@@ -311,7 +328,7 @@ class GameRoom {
       return { valid: false, error: "Word not found in dictionary" }
     }
 
-    return { valid: true }
+      return { valid: true }
   }
 
   // Fetch definition from external API

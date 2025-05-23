@@ -340,7 +340,8 @@ function GameBoard({ player, gameSettings: initialGameSettings }) {
 
   const isLocalMultiplayer = gameSettings.mode === "local"
   const disableInput =
-    (!isLocalMultiplayer && currentPlayerId !== player.id) || (isOnlineMode && currentPlayerId !== player.id)
+    (isOnlineMode && (gameStatus !== "playing" || currentPlayerId !== player.id)) ||
+    (isLocalMultiplayer && localGameState?.status !== "playing")
 
   const playerPowerUps = activeGameState.powerUps?.[player.id] || {}
 

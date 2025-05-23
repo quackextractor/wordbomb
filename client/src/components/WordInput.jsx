@@ -16,9 +16,13 @@ const WordInput = forwardRef(function WordInput(
 
   // Combine local and server-provided used words
   const allUsedWords = useMemo(() => {
+    let serverWords = usedWords
+    if (Array.isArray(usedWords)) {
+      serverWords = new Set(usedWords)
+    }
     const combined = new Set([...localUsedWords])
-    if (usedWords && typeof usedWords[Symbol.iterator] === "function") {
-      for (const word of usedWords) {
+    if (serverWords && typeof serverWords[Symbol.iterator] === "function") {
+      for (const word of serverWords) {
         combined.add(word)
       }
     }
@@ -159,7 +163,10 @@ WordInput.propTypes = {
   disabled: PropTypes.bool,
   wordpiece: PropTypes.string,
   currentPlayerId: PropTypes.string,
-  usedWords: PropTypes.object,
+  usedWords: PropTypes.oneOfType([
+    PropTypes.object, // Set
+    PropTypes.array,  // Array
+  ]),
 }
 
 export default WordInput
