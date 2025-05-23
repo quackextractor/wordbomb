@@ -1,6 +1,6 @@
 // Update the Player class to properly handle player names
 export default class Player {
-    constructor({ id, name, nickname, avatar, color, isHost = false }) {
+    constructor({id, name, nickname, avatar, color, isHost = false}) {
         this.id = id
         this.name = name || nickname || "Player" // Ensure we have a name
         this.nickname = nickname || name || "Player" // Ensure we have a nickname

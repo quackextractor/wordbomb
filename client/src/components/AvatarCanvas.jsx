@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import {useEffect, useRef, useState} from "react"
 
 const defaultDrawings = {
     circle: (ctx, color) => {
@@ -36,7 +36,7 @@ const defaultDrawings = {
     }
 }
 
-function AvatarCanvas({ onAvatarCreated }) {
+function AvatarCanvas({onAvatarCreated}) {
     const canvasRef = useRef(null)
     const [isDrawing, setIsDrawing] = useState(false)
     const [hasDrawn, setHasDrawn] = useState(false)
@@ -45,10 +45,10 @@ function AvatarCanvas({ onAvatarCreated }) {
     const [lineThickness, setLineThickness] = useState(5)
     const [selectedDefault, setSelectedDefault] = useState("circle")
     const [defaultColor, setDefaultColor] = useState("#4287f5")
-    const prevPos = useRef({ x: 0, y: 0 })
+    const prevPos = useRef({x: 0, y: 0})
 
     const generateRandomColor = () => {
-        return `#${Math.floor(Math.random()*16777215).toString(16)}`
+        return `#${Math.floor(Math.random() * 16777215).toString(16)}`
     }
 
     useEffect(() => {
@@ -77,7 +77,7 @@ function AvatarCanvas({ onAvatarCreated }) {
         const rect = canvas.getBoundingClientRect()
         const x = e.clientX - rect.left
         const y = e.clientY - rect.top
-        prevPos.current = { x, y }
+        prevPos.current = {x, y}
     }
 
     const draw = (e) => {
@@ -99,7 +99,7 @@ function AvatarCanvas({ onAvatarCreated }) {
         ctx.lineTo(x, y)
         ctx.stroke()
 
-        prevPos.current = { x, y }
+        prevPos.current = {x, y}
     }
 
     const stopDrawing = () => {
@@ -164,7 +164,7 @@ function AvatarCanvas({ onAvatarCreated }) {
                     onTouchMove={(e) => draw(e.touches[0])}
                     onTouchEnd={stopDrawing}
                 />
-                <div className="absolute inset-0 rounded-lg pointer-events-none border border-gray-200/50" />
+                <div className="absolute inset-0 rounded-lg pointer-events-none border border-gray-200/50"/>
             </div>
 
             <div className="flex flex-wrap gap-4 items-center justify-center">

@@ -1,7 +1,7 @@
 "use client"
 import PropTypes from "prop-types"
 
-function PowerUpsPanel({ playerPowerUps, handleUsePowerUp, isPlayerTurn }) {
+function PowerUpsPanel({playerPowerUps, handleUsePowerUp, isPlayerTurn}) {
     if (!Object.keys(playerPowerUps).length) return null
 
     const powerUpIcons = {

@@ -1,7 +1,7 @@
 "use client"
 import PropTypes from "prop-types"
 
-function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, isLocalMode }) {
+function GameWaiting({gameSettings, players, leaveRoom, navigate, startGame, isLocalMode}) {
     return (
         <div className="game-container flex items-center justify-center min-h-screen py-8">
             <div className="card max-w-md w-full p-6 md:p-8 animate-bounce-in">
@@ -9,7 +9,8 @@ function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, is
 
                 <div className="bg-black/20 rounded-lg p-4 mb-6 text-center">
                     <p className="mb-2">Room ID:</p>
-                    <div className="text-xl font-mono bg-white/10 rounded-lg py-2 px-4 inline-block">{gameSettings.roomId}</div>
+                    <div
+                        className="text-xl font-mono bg-white/10 rounded-lg py-2 px-4 inline-block">{gameSettings.roomId}</div>
                     <p className="mt-3 text-white/70 text-sm">Share this code with friends to join!</p>
                 </div>
 
@@ -22,7 +23,8 @@ function GameWaiting({ gameSettings, players, leaveRoom, navigate, startGame, is
                                 className="flex items-center bg-white/5 rounded-lg p-3 transition-colors hover:bg-white/10"
                             >
                                 {p.isHost && (
-                                    <span className="inline-flex items-center px-2 py-1 mr-2 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-300">
+                                    <span
+                                        className="inline-flex items-center px-2 py-1 mr-2 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-300">
                     Host
                   </span>
                                 )}
