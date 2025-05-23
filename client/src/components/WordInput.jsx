@@ -86,8 +86,14 @@ const WordInput = forwardRef(function WordInput(
   }
 
   const handleChange = (e) => {
-    setInputValue(e.target.value)
-    setError("")
+    const value = e.target.value
+    setInputValue(value)
+    const word = value.trim().toLowerCase()
+    if (allUsedWords.has(word) && word) {
+      setError("Word can only be used once.")
+    } else {
+      setError("")
+    }
   }
 
   const handleSubmit = async (e) => {
