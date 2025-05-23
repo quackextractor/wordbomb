@@ -184,9 +184,8 @@ io.on("connection", (socket) => {
   socket.on("game:start_countdown", ({ roomId, countdown = 3 }) => {
     const room = gameRooms.get(roomId)
     if (room) {
-      // Broadcast countdown to all players
-      io.to(roomId).emit("game:countdown", { countdown })
-
+      // Notify all clients to start the countdown locally
+      io.to(roomId).emit("game:starting", { countdown })
       console.log(`Starting game countdown in room ${roomId}: ${countdown} seconds`)
     }
   })

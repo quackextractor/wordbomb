@@ -264,11 +264,6 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
         }
       },
 
-      "game:countdown": (data) => {
-        console.log("Game countdown received:", data)
-        setCountdown(data.countdown)
-      },
-
       "game:start": (data) => {
         console.log("Game start received:", data)
         updateGameState({
@@ -521,20 +516,53 @@ const useGameSocket = (player, gameSettings, setWordDefinitions) => {
     [player, gameSettings.isHost, connected],
   )
 
+  const countdownIntervalRef = useRef(null)
+
+  // Listen for 'game:starting' event and start local countdown
+  useEffect(() => {
+    const socket = socketRef.current
+    if (!socket) return
+    const handleGameStarting = (data) => {
+      if (!data || typeof data.countdown !== "number") return
+      setCountdown(data.countdown)
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current)
+      }
+      let current = data.countdown
+      countdownIntervalRef.current = setInterval(() => {
+        current -= 1
+        setCountdown((prev) => {
+          if (prev === null) return null
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current)
+            // Only the host should emit 'game:start' when countdown ends
+            if (gameSettings.isHost && socketRef.current && gameSettings.roomId) {
+              socketRef.current.emit("game:start", { roomId: gameSettings.roomId, mode: gameSettings.mode })
+            }
+            return null
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    socket.on("game:starting", handleGameStarting)
+    return () => {
+      socket.off("game:starting", handleGameStarting)
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current)
+        countdownIntervalRef.current = null
+      }
+    }
+  }, [gameSettings.isHost, gameSettings.roomId, gameSettings.mode])
+
+  // Remove countdown logic from startGameWithCountdown, just emit to server
   const startGameWithCountdown = useCallback(
     (countdownSeconds = 3) => {
       if (gameSettings.roomId && socketRef.current) {
-        console.log(`Starting game countdown in room ${gameSettings.roomId}: ${countdownSeconds} seconds`)
         socketRef.current.emit("game:start_countdown", {
           roomId: gameSettings.roomId,
           countdown: countdownSeconds,
         })
-
-        setCountdown(countdownSeconds)
-
-        setTimeout(() => {
-          startGame()
-        }, countdownSeconds * 1000)
       }
     },
     [gameSettings.roomId],
