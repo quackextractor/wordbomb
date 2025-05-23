@@ -52,17 +52,22 @@ function AvatarCanvas({onAvatarCreated}) {
     }
 
     useEffect(() => {
-        const canvas = canvasRef.current
-        const ctx = canvas.getContext("2d")
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
 
-        if (!hasDrawn) {
-            ctx.fillStyle = "#ffffff"
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            const color = generateRandomColor()
-            setDefaultColor(color)
-            defaultDrawings[selectedDefault](ctx, color)
-        }
-    }, [hasDrawn, selectedDefault])
+        // This effect runs on mount and whenever selectedDefault changes.
+        // It will always clear the canvas then draw the new default shape.
+        ctx.fillStyle = "#ffffff"; // Ensure canvas is white before drawing shape
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const color = generateRandomColor();
+        setDefaultColor(color);
+        setCurrentColor(color); // Sync brush color with the default shape's bg color
+
+        defaultDrawings[selectedDefault](ctx, color);
+        setHasDrawn(true); // A default shape is now on the canvas
+
+    }, [selectedDefault]); // Only depends on selectedDefault
 
     const saveAvatar = () => {
         const canvas = canvasRef.current
@@ -108,16 +113,15 @@ function AvatarCanvas({onAvatarCreated}) {
     }
 
     const handleClear = () => {
-        const canvas = canvasRef.current
-        const ctx = canvas.getContext("2d")
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        const color = generateRandomColor()
-        setDefaultColor(color)
-        defaultDrawings[selectedDefault](ctx, color)
-        setHasDrawn(false)
-        saveAvatar()
-    }
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height); // Clears to white
+        setHasDrawn(false); // Mark that the canvas is effectively blank
+        // defaultColor, currentColor, and selectedDefault remain unchanged by clear itself.
+        // The canvas will stay blank until user draws, imports, or selects a new default shape.
+        saveAvatar();
+    };
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0]
